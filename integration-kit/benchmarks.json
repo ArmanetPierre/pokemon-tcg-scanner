@@ -1,0 +1,59 @@
+{
+  "_comment": "Mesures de référence pour comparer une implémentation iOS. Voir AGENTS.md §8 et §9.",
+  "materiel": "MacBook Pro M3 Pro, macOS 26.5",
+  "date": "2026-08-06",
+  "modele": "CardEncoder.mlpackage (MobileCLIP2-S2, fp16, entrée 256x256)",
+  "index": {"cartes": 20394, "dimensions": 512, "dtype": "float16"},
+  "methode": "moyenne sur 10 à 50 itérations après préchauffage ; images issues de sample/",
+
+  "embedding_par_unite_de_calcul_ms": {
+    "cpuAndNeuralEngine": 3.3,
+    "all": 5.7,
+    "cpuAndGPU": 8.7,
+    "cpuOnly": 22.7,
+    "recommandation": "cpuAndNeuralEngine — laisser Core ML choisir coûte presque le double"
+  },
+
+  "etapes_ms": {
+    "detection_document_720p": 12.7,
+    "detection_document_1080p": 24.1,
+    "detection_document_12mpx": 113.5,
+    "detection_rectangles_720p": 17.9,
+    "detection_rectangles_1080p": 29.5,
+    "detection_rectangles_12mpx": 116.3,
+    "redressement_homographie": 0.5,
+    "pretraitement_geometrique": 1.8,
+    "embedding_neural_engine": 3.3,
+    "recherche_20394_vecteurs": 0.5,
+    "ocr_orientation": 16.1,
+    "ocr_bandeau": 59.6
+  },
+
+  "bout_en_bout_depuis_image_720p_ms": {
+    "identification_complete": 96.0,
+    "identification_sans_ocr_bandeau": 36.5
+  },
+
+  "repartition_du_cout": {
+    "modele_embedding_pct": 3,
+    "ocr_vision_pct": 79,
+    "detection_pct": 13,
+    "reste_pct": 5,
+    "consequence": "optimiser le modèle n'apporte rien ; c'est la fréquence d'appel des OCR qui décide"
+  },
+
+  "budget_video_30fps_ms": {
+    "budget_par_image": 33.3,
+    "par_image_detection_seule_720p": 12.7,
+    "a_l_apparition_d_une_carte": 36.5,
+    "une_fois_en_tache_de_fond_ocr_bandeau": 59.6,
+    "carte_deja_identifiee_et_suivie": 0.0
+  },
+
+  "a_mesurer_sur_iphone": [
+    "latence de l'embedding sur l'ANE de l'iPhone (attendue du même ordre)",
+    "coût de Vision sur iPhone — poste dominant, aucune mesure disponible",
+    "impact thermique et throttling sur un flux vidéo prolongé",
+    "consommation batterie en scan continu"
+  ]
+}

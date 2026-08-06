@@ -1,0 +1,23 @@
+[project]
+name = "pokemon-card-scanner-ml"
+version = "0.1.0"
+description = "Prototypage ML : dataset, embeddings et évaluation avant export Core ML"
+requires-python = ">=3.10"
+
+dependencies = [
+    "torch>=2.2",
+    "torchvision>=0.17",
+    "open_clip_torch>=2.24",
+    "transformers>=4.40",
+    "numpy>=1.26",
+    "pillow>=10.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# Export iOS. Séparé car coremltools contraint fortement la version de torch :
+# on ne veut pas que cette contrainte bloque le prototypage.
+coreml = ["coremltools>=8.0"]
+
+[tool.ruff]
+line-length = 100

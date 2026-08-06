@@ -1,0 +1,15 @@
+{
+  "model": "mobileclip2-s2",
+  "dim": 512,
+  "input_size": 256,
+  "precision": "fp16",
+  "preprocess_in_model": true,
+  "geometry": {
+    "resize_mode": "resize_shortest_then_center_crop",
+    "interpolation": "bilinear",
+    "antialias": true,
+    "note": "redimensionner le petit c\u00f4t\u00e9 \u00e0 input_size, puis recadrer au centre \u2014 le haut et le bas d'une carte portrait sont volontairement rogn\u00e9s, l'index est construit ainsi"
+  },
+  "parity_min": 0.9891078472137451,
+  "parity_mean": 0.9957494760553042
+}

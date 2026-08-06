@@ -1,0 +1,68 @@
+{
+  "etape_1_pretraitement": {
+    "fichier": "reference_card.jpg",
+    "but": "scan officiel présent dans l'index : valide le prétraitement Core ML seul, sans détection",
+    "attendu": {
+      "card_id": "me5-36",
+      "score_top1": 0.9951
+    },
+    "embedding_8_premieres_valeurs": [
+      0.03684,
+      0.0291,
+      0.00118,
+      0.00033,
+      -0.01329,
+      0.02805,
+      -0.04556,
+      0.0248
+    ],
+    "tolerance": "cosinus >= 0,98 avec ce vecteur. En dessous, la géométrie du prétraitement est fausse."
+  },
+  "etape_2_chaine_complete": [
+    {
+      "fichier": "IMG_5033.jpeg",
+      "but": "cas nominal, carte posée bien éclairée",
+      "attendu": {
+        "card_id": "me5-23",
+        "nom": "Electrike",
+        "confiance": "edition",
+        "source": "numéro lu"
+      },
+      "indicatif": {
+        "crop_retenu": "doc0 ocr:0°",
+        "marge_edition": 0.0495,
+        "marge_nom": 0.0658
+      }
+    },
+    {
+      "fichier": "IMG_5028.jpeg",
+      "but": "l'embedding seul se trompe : c'est l'OCR du bandeau qui tranche",
+      "attendu": {
+        "card_id": "me1-152",
+        "nom": "Delibird",
+        "confiance": "edition",
+        "source": "numéro lu"
+      },
+      "indicatif": {
+        "crop_retenu": "doc0 ocr:0°",
+        "marge_edition": 0.0147,
+        "marge_nom": 0.0147
+      }
+    },
+    {
+      "fichier": "IMG_5021.jpeg",
+      "but": "contre-jour, carte tenue à la main, bandeau illisible",
+      "attendu": {
+        "card_id": "me5-76",
+        "nom": "Fossil Quarry",
+        "confiance": "edition",
+        "source": "similarité"
+      },
+      "indicatif": {
+        "crop_retenu": "doc0 0°",
+        "marge_edition": 0.0951,
+        "marge_nom": 0.0951
+      }
+    }
+  ]
+}

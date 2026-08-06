@@ -1,0 +1,30 @@
+# Environnement Python
+ml/.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Données lourdes — toutes régénérables, voir README.md
+# (5,5 Go d'images de référence, métadonnées assemblées, banque de vecteurs,
+#  modèle Core ML et index binaire)
+ml/data/raw/
+ml/data/processed/
+ml/data/embeddings/
+ml/data/export/
+ml/data/eval/crops/
+ml/data/eval/*.jpg
+ml/data/eval/*.jpeg
+
+# Photos de test (dépôt allégé volontairement)
+sample/
+
+# Modèle et index livrés au kit d'intégration : reconstruits par
+# scripts/export_coreml.py et scripts/export_index.py
+integration-kit/CardEncoder.mlpackage/
+integration-kit/index.bin
+integration-kit/index.json
+integration-kit/cards.json
+integration-kit/test/*.jpg
+integration-kit/test/*.jpeg
+
+.DS_Store

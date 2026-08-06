@@ -1,0 +1,416 @@
+<title>Scanner Pokémon TCG — rapport de tests</title>
+<style>
+  :root {
+    --paper: #F2F4F6;
+    --panel: #FFFFFF;
+    --ink: #151A21;
+    --ink-soft: #59636F;
+    --ink-faint: #8B95A1;
+    --accent: #1D6379;
+    --accent-soft: #DCE9ED;
+    --good: #2F6B4C;
+    --bad: #A4392C;
+    --warn: #93610F;
+    --rule: #D5DAE0;
+    --track: #E4E8EC;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #10141A; --panel: #171D25; --ink: #E6EAEF; --ink-soft: #9AA5B1;
+      --ink-faint: #6C7885; --accent: #6FB4C9; --accent-soft: #1C2E36;
+      --good: #6FBB91; --bad: #E08578; --warn: #D6A552;
+      --rule: #262E38; --track: #222A33;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141A; --panel: #171D25; --ink: #E6EAEF; --ink-soft: #9AA5B1;
+    --ink-faint: #6C7885; --accent: #6FB4C9; --accent-soft: #1C2E36;
+    --good: #6FBB91; --bad: #E08578; --warn: #D6A552;
+    --rule: #262E38; --track: #222A33;
+  }
+  :root[data-theme="light"] {
+    --paper: #F2F4F6; --panel: #FFFFFF; --ink: #151A21; --ink-soft: #59636F;
+    --ink-faint: #8B95A1; --accent: #1D6379; --accent-soft: #DCE9ED;
+    --good: #2F6B4C; --bad: #A4392C; --warn: #93610F;
+    --rule: #D5DAE0; --track: #E4E8EC;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans);
+         font-size: 17px; line-height: 1.65; margin: 0; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 4rem 1.5rem 6rem;
+          display: flex; flex-direction: column; gap: 3.25rem; }
+  .col { max-width: 64ch; display: flex; flex-direction: column; gap: 1rem; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; }
+  h1 { font-size: 2.6rem; line-height: 1.12; letter-spacing: -0.01em; }
+  h2 { font-size: 1.6rem; line-height: 1.25; }
+  h3 { font-size: 1.12rem; }
+  p { margin: 0; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--accent-soft);
+         padding: 0.1em 0.35em; border-radius: 3px; }
+  .eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em;
+             text-transform: uppercase; color: var(--ink-faint); }
+  .lede { font-size: 1.2rem; color: var(--ink-soft); line-height: 1.55; }
+  section { display: flex; flex-direction: column; gap: 1.5rem; }
+  .rule { height: 1px; background: var(--rule); border: 0; margin: 0; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px;
+           overflow: hidden; }
+  .stat { background: var(--panel); padding: 1.1rem 1.2rem; display: flex;
+          flex-direction: column; gap: 0.2rem; }
+  .stat b { font-family: var(--mono); font-size: 1.5rem; font-weight: 500;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat span { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.35; }
+
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--rule);
+           vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+       text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+       border-bottom: 1px solid var(--ink-faint); white-space: nowrap; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+
+  .chart { display: flex; flex-direction: column; gap: 0.3rem; }
+  .row { display: grid; grid-template-columns: 3.6rem 1fr 4rem 5.5rem; align-items: center;
+         gap: 0.75rem; font-family: var(--mono); font-size: 0.8rem;
+         font-variant-numeric: tabular-nums; }
+  .row .id { color: var(--ink-soft); }
+  .track { position: relative; height: 15px; background: var(--track); border-radius: 2px; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--good); }
+  .fill.miss { background: var(--bad); }
+  .verdict { font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  .verdict.ok { color: var(--good); }
+  .verdict.no { color: var(--bad); }
+  .threshold { position: relative; height: 1.9rem; margin-top: 0.15rem; }
+  .threshold .line { position: absolute; top: 0; bottom: 1.1rem; width: 1px;
+                     background: var(--accent); }
+  .threshold .tag { position: absolute; bottom: 0; transform: translateX(-50%);
+                    font-family: var(--mono); font-size: 0.68rem; color: var(--accent);
+                    white-space: nowrap; }
+  .chart-scale { display: grid; grid-template-columns: 3.6rem 1fr 4rem 5.5rem; gap: 0.75rem; }
+
+  .findings { display: flex; flex-direction: column; gap: 1px;
+              background: var(--rule); border: 1px solid var(--rule); border-radius: 6px;
+              overflow: hidden; }
+  .finding { background: var(--panel); padding: 1.3rem 1.4rem;
+             display: grid; grid-template-columns: 2.4rem 1fr; gap: 1.1rem; }
+  .finding .rank { font-family: var(--mono); font-size: 1.5rem; color: var(--ink-faint);
+                   font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .finding .body { display: flex; flex-direction: column; gap: 0.5rem; }
+  .finding p { font-size: 0.95rem; color: var(--ink-soft); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+  .chip { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em;
+          text-transform: uppercase; padding: 0.2em 0.55em; border-radius: 3px;
+          border: 1px solid currentColor; }
+  .chip.cost { color: var(--bad); }
+  .chip.gain { color: var(--good); }
+  .chip.open { color: var(--warn); }
+
+  .callout { background: var(--panel); border-left: 3px solid var(--accent);
+             padding: 1.1rem 1.3rem; border-radius: 0 6px 6px 0;
+             display: flex; flex-direction: column; gap: 0.5rem; }
+  .callout p { font-size: 0.97rem; }
+  ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.45rem; }
+  li { color: var(--ink-soft); }
+  li b { color: var(--ink); font-weight: 600; }
+  footer { color: var(--ink-faint); font-size: 0.85rem; }
+  @media (max-width: 620px) {
+    h1 { font-size: 2rem; }
+    .row, .chart-scale { grid-template-columns: 3rem 1fr 3.4rem; }
+    .row .verdict { display: none; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="col">
+  <p class="eyebrow">Scanner Pokémon TCG · rapport de tests · 6 août 2026</p>
+  <h1>La reconnaissance marche. C'est le cadrage qui décide.</h1>
+  <p class="lede">Quinze photos prises à l'iPhone ont été passées dans la chaîne complète.
+  Le modèle d'embedding n'est jamais le facteur limitant : sur un crop correct et à
+  l'endroit, la bonne carte sort en tête onze fois sur douze. Tout le reste du travail
+  se joue avant lui.</p>
+</header>
+
+<section>
+  <h2>Ce qui a été construit</h2>
+  <div class="stats">
+    <div class="stat"><b>20 444</b><span>cartes en base, 174 sets jusqu'à juillet 2026</span></div>
+    <div class="stat"><b>20 394</b><span>images de référence en haute résolution, 5,5 Go</span></div>
+    <div class="stat"><b>42 Mo</b><span>index d'embeddings, 21 Mo en float16 pour iOS</span></div>
+    <div class="stat"><b>38 ms</b><span>par identification : 34 ms d'embedding, 4 ms de recherche</span></div>
+  </div>
+  <div class="col">
+    <p>L'index est construit avec MobileCLIP2-S2, le modèle qu'Apple conçoit pour son
+    Neural Engine, en vecteurs de 512 dimensions. Sa construction complète prend six
+    minutes sur le M3 Pro. La recherche se fait par produit matriciel sur les 20 394
+    vecteurs, sans FAISS — à cette taille c'est exact et instantané, et surtout c'est
+    identique à ce que fera l'app via Accelerate.</p>
+    <p>Cinquante cartes n'ont pas d'image disponible sur le CDN officiel (promos
+    McDonald's), soit 0,24 % de la base.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <h2>Le protocole de test</h2>
+  <div class="col">
+    <p>Quinze photos réelles, prises à l'iPhone dans des conditions volontairement
+    ordinaires : table en rotin, câbles, écran de portable, contre-jour, cartes tenues à
+    la main ou sous pochette. Toutes les cartes sont <b>françaises</b> alors que l'index
+    est en anglais.</p>
+    <p>La vérité terrain a été établie en lisant le nom, le numéro et le code de set
+    imprimés sur chaque carte, pas en faisant confiance au système. Deux cartes se sont
+    révélées absentes de l'index — leur set promo n'est pas couvert par la source de
+    données — et sont exclues du calcul plutôt que comptées comme des échecs. Une
+    seizième photo, montrant cinq cartes étalées, sert au test multi-cartes.</p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Couvert</th><th>Photos</th><th>Détail</th></tr></thead>
+      <tbody>
+        <tr><td>Sets</td><td class="num">6</td><td>Pitch Black, Mega Evolution, Phantasmal Flames, Paldea Evolved, Twilight Masquerade, et un set promo non indexé</td></tr>
+        <tr><td>Types de carte</td><td class="num">4</td><td>cadre classique, illustration rare, full-art holo, dresseur</td></tr>
+        <tr><td>Conditions</td><td class="num">10</td><td>rotation, perspective, contre-jour, reflets holo, pochette, fond chargé, occlusion partielle, gros plan, carte lointaine, sur écran</td></tr>
+        <tr><td>Évaluables</td><td class="num">12</td><td>sur 14 photos mono-carte ; 2 cartes absentes de l'index</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <h2>Résultats</h2>
+  <div class="col">
+    <p>Chaque ligne isole l'apport d'une étape, mesurée sur les mêmes 12 photos.</p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Configuration</th><th>Top-1</th><th>Top-5</th><th>Ce que ça montre</th></tr></thead>
+      <tbody>
+        <tr><td>Photo iPhone brute</td><td class="num">1/12</td><td class="num">1/12</td><td>sans cadrage, le vecteur décrit la table et le fond, pas la carte</td></tr>
+        <tr><td>Détecteur OpenCV maison</td><td class="num">6/12</td><td class="num">7/12</td><td>un Canny + contours suffit déjà à transformer le résultat</td></tr>
+        <tr><td>Vision d'Apple</td><td class="num">7/12</td><td class="num">9/12</td><td>trouve une carte sur toutes les photos, y compris à contre-jour</td></tr>
+        <tr><td>Vision, orientation corrigée</td><td class="num">9/12</td><td class="num">10/12</td><td>en écartant simplement la variante retournée</td></tr>
+        <tr><td>Choix parfait de variante</td><td class="num">11/12</td><td class="num">12/12</td><td>plafond atteignable sans toucher au modèle</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout">
+    <h3>L'écart qui compte</h3>
+    <p>Entre les 7/12 actuels et les 11/12 du plafond, il n'y a aucun changement de
+    modèle, aucun réentraînement, aucune donnée supplémentaire. Uniquement le choix,
+    parmi les découpes déjà calculées, de la bonne. Le gain le plus important du projet
+    est aujourd'hui une question de logique de sélection.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <h2>La marge est un signal de confiance fiable</h2>
+  <div class="col">
+    <p>L'écart entre le premier et le deuxième candidat prédit la justesse presque
+    parfaitement. Classées par marge décroissante, les six premières identifications
+    sont toutes correctes.</p>
+  </div>
+  <div class="chart">
+    <div class="row"><span class="id">5025</span><div class="track"><div class="fill" style="width:97.7%"></div></div><span>0.1954</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5021</span><div class="track"><div class="fill" style="width:48.0%"></div></div><span>0.0960</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5017</span><div class="track"><div class="fill" style="width:40.4%"></div></div><span>0.0808</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5027</span><div class="track"><div class="fill" style="width:33.5%"></div></div><span>0.0670</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5019</span><div class="track"><div class="fill" style="width:22.0%"></div></div><span>0.0439</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5022</span><div class="track"><div class="fill" style="width:20.7%"></div></div><span>0.0413</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5018</span><div class="track"><div class="fill miss" style="width:11.0%"></div></div><span>0.0220</span><span class="verdict no">faux</span></div>
+    <div class="row"><span class="id">5028</span><div class="track"><div class="fill miss" style="width:6.4%"></div></div><span>0.0128</span><span class="verdict no">rang 2</span></div>
+    <div class="row"><span class="id">5020</span><div class="track"><div class="fill miss" style="width:4.7%"></div></div><span>0.0093</span><span class="verdict no">faux</span></div>
+    <div class="row"><span class="id">5024</span><div class="track"><div class="fill miss" style="width:3.1%"></div></div><span>0.0061</span><span class="verdict no">rang 2</span></div>
+    <div class="row"><span class="id">5031</span><div class="track"><div class="fill" style="width:3.0%"></div></div><span>0.0059</span><span class="verdict ok">correct</span></div>
+    <div class="row"><span class="id">5030</span><div class="track"><div class="fill miss" style="width:1.9%"></div></div><span>0.0037</span><span class="verdict no">faux</span></div>
+    <div class="chart-scale">
+      <span></span>
+      <div class="threshold">
+        <div class="line" style="left:20%"></div>
+        <div class="tag" style="left:20%">seuil 0,04</div>
+      </div>
+      <span></span><span></span>
+    </div>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Seuil sur la marge</th><th>Résultats retenus</th><th>Précision</th></tr></thead>
+      <tbody>
+        <tr><td>≥ 0,04</td><td class="num">6/12</td><td class="num">100 %</td></tr>
+        <tr><td>≥ 0,02</td><td class="num">7/12</td><td class="num">86 %</td></tr>
+        <tr><td>aucun</td><td class="num">12/12</td><td class="num">58 %</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Le score absolu, lui, ne discrimine rien. Le pire échec du jeu — Méga-Blizzaroi ex,
+    hors du top-5 — affiche le deuxième meilleur score de toutes les photos, à 0,8598.
+    S'y fier aurait produit une fausse certitude. La raison est structurelle : toutes les
+    cartes partagent une mise en page, donc deux cartes sans aucun rapport se ressemblent
+    déjà à environ 0,79. L'échelle utile va de 0,79 à 1, pas de 0 à 1.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <h2>Diagnostic des échecs</h2>
+  <div class="col">
+    <p>Classés par impact mesuré, pas par difficulté supposée. C'est cette liste qui doit
+    fixer l'ordre des travaux.</p>
+  </div>
+  <div class="findings">
+
+    <div class="finding">
+      <span class="rank">1</span>
+      <div class="body">
+        <h3>La carte est redressée à l'envers</h3>
+        <p>Quatre des cinq échecs portent sur un crop retourné à 180°. En inspectant les
+        découpes retenues, la bonne orientation existait à chaque fois et obtenait un bon
+        score — elle a simplement perdu l'arbitrage. Onze des douze variantes idéales sont
+        à 0° : le redressement produit donc déjà la carte à l'endroit dans la quasi-totalité
+        des cas.</p>
+        <p>Écarter purement la variante 180° fait passer de 7/12 à 9/12, mais casserait une
+        carte réellement photographiée tête-bêche. La solution propre est de lire le sens du
+        texte sur la découpe.</p>
+        <div class="tag-row">
+          <span class="chip gain">gain mesuré 7/12 → 9/12</span>
+          <span class="chip gain">plafond 11/12</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="rank">2</span>
+      <div class="body">
+        <h3>Le mauvais quadrilatère est retenu</h3>
+        <p>Vision propose jusqu'à neuf rectangles par photo : la carte, mais aussi une dalle
+        de table, un écran, un bout de clavier. La règle actuelle retient celui qui maximise
+        score + marge, ce qui se fait parfois piéger par une découpe unie — un fragment de
+        table ressort nettement sur une carte Énergie, elle aussi presque unie.</p>
+        <p>Une contrainte de format aiderait : une carte fait 63 × 88 mm, soit un rapport de
+        0,716, et les découpes parasites s'en écartent souvent.</p>
+        <div class="tag-row">
+          <span class="chip gain">gain restant 9/12 → 11/12</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="rank">3</span>
+      <div class="body">
+        <h3>Deux cartes trop proches visuellement</h3>
+        <p>Cryodo 209/193 confondu avec Baxcalibur 210/193 : deux illustration rare
+        consécutives du même set, même style, la bonne réponse en rang 2 à 0,006 d'écart.
+        Même schéma pour Cadoizo, seul cas qui reste faux même avec un choix parfait de
+        découpe.</p>
+        <p>C'est la limite réelle de l'embedding global, et le seul point de cette liste qui
+        demande un vrai travail de modélisation. La piste prévue reste le re-ranking sur le
+        bandeau bas, qui porte le numéro et le symbole du set — c'est précisément ce qui
+        distingue ces cartes, et la raison pour laquelle les images haute résolution ont été
+        retenues.</p>
+        <div class="tag-row">
+          <span class="chip open">irréductible sans re-ranking</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="rank">4</span>
+      <div class="body">
+        <h3>Les cartes qui se chevauchent ne sont pas séparées</h3>
+        <p>Sur une photo de cinq cartes dont quatre se recouvrent, une seule a été isolée —
+        la seule bien dégagée — mais elle a été correctement identifiée. Vision a besoin de
+        voir les quatre bords d'un rectangle fermé.</p>
+        <p>Pour un scan de collection, il faudra soit demander d'espacer les cartes, soit
+        entraîner le détecteur dédié prévu au plan B. C'est la seule question à laquelle ce
+        jeu de tests répond par la négative.</p>
+        <div class="tag-row">
+          <span class="chip cost">1 carte détectée sur 5</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="rank">5</span>
+      <div class="body">
+        <h3>Des cartes absentes de l'index</h3>
+        <p>Deux cartes sur quatorze appartiennent à un set promo que la source de données ne
+        couvre pas. Leur illustration a été comparée à toutes les variantes indexées : aucune
+        correspondance. Aucun modèle ne peut les trouver.</p>
+        <p>Ce n'est pas un problème de reconnaissance mais de fraîcheur des données, à
+        surveiller à chaque sortie de set.</p>
+        <div class="tag-row">
+          <span class="chip cost">2 cartes sur 14 introuvables</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <h2>Ce que les tests ont tranché</h2>
+  <div class="col">
+    <ul>
+      <li><b>Les cartes françaises sont reconnues depuis un index anglais.</b> Funécire
+      ressort en Litwick à 0,873, Superdofin en Palafin à 0,871. L'illustration est
+      identique d'une langue à l'autre et pèse bien plus que le texte. Un index par langue
+      n'est pas nécessaire.</li>
+      <li><b>Le détecteur d'Apple suffit pour une carte isolée.</b> Il trouve la carte sur
+      les quinze photos, là où le détecteur maison en ratait trois. Le modèle de détection
+      dédié envisagé au départ n'est nécessaire que pour le cas multi-cartes.</li>
+      <li><b>Les full-art holo ne sont pas un point faible.</b> Une première lecture les
+      accusait ; l'inspection des découpes a montré que leurs échecs venaient de
+      l'orientation. La carte qui obtient la meilleure marge de tout le jeu est elle-même
+      une full-art.</li>
+      <li><b>Le modèle d'embedding n'a pas besoin d'être changé pour l'instant.</b> Le
+      plafond de 11/12 est atteint avec MobileCLIP2-S2 tel quel. Comparer d'autres modèles
+      avant d'avoir réglé le cadrage reviendrait à optimiser ce qui ne limite pas.</li>
+    </ul>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <h2>Ce qui reste ouvert</h2>
+  <div class="col">
+    <ul>
+      <li><b>Douze photos, c'est peu.</b> Les écarts d'une ou deux photos ne sont pas
+      significatifs, et le seuil de 0,04 sur la marge demande à être confirmé sur un
+      échantillon plus large avant d'être câblé dans l'app.</li>
+      <li><b>Aucune carte réimprimée dans plusieurs sets n'a été testée.</b> C'est pourtant
+      le cas de confusion identifié dès le départ, mesuré à 0,021 d'écart entre le Pikachu
+      Base et sa réimpression Base Set 2.</li>
+      <li><b>Aucune carte ancienne n'a été testée.</b> Toutes les photos portent sur des
+      cartes récentes ; les mises en page des séries Base, Neo ou EX sont très différentes.</li>
+      <li><b>Rien n'a encore tourné sur iPhone.</b> Vision a été piloté depuis Python via
+      PyObjC, ce qui valide l'API mais pas les performances embarquées ni la conversion Core
+      ML du modèle d'embedding.</li>
+    </ul>
+  </div>
+</section>
+
+<hr class="rule">
+
+<footer class="col">
+  <p>Mesures reproductibles avec <code>scripts/evaluate_real.py</code>. La vérité terrain
+  des photos est dans <code>data/eval/truth.json</code>, établie à la lecture des cartes.</p>
+</footer>
+
+</div>
