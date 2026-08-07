@@ -1,11 +1,14 @@
 {
   "_comment": "Mesures de référence pour comparer une implémentation iOS. Voir AGENTS.md §8 et §9.",
-  "materiel": "MacBook Pro M3 Pro, macOS 26.5",
+  "materiel": "MacBook Pro M3 Pro, macOS 26.5 — sauf section iphone_13_pro",
   "date": "2026-08-06",
   "modele": "CardEncoder.mlpackage (MobileCLIP2-S2, fp16, entrée 256x256)",
-  "index": {"cartes": 20394, "dimensions": 512, "dtype": "float16"},
+  "index": {
+    "cartes": 20394,
+    "dimensions": 512,
+    "dtype": "float16"
+  },
   "methode": "moyenne sur 10 à 50 itérations après préchauffage ; images issues de sample/",
-
   "embedding_par_unite_de_calcul_ms": {
     "cpuAndNeuralEngine": 3.3,
     "all": 5.7,
@@ -13,7 +16,6 @@
     "cpuOnly": 22.7,
     "recommandation": "cpuAndNeuralEngine — laisser Core ML choisir coûte presque le double"
   },
-
   "etapes_ms": {
     "detection_document_720p": 12.7,
     "detection_document_1080p": 24.1,
@@ -28,12 +30,10 @@
     "ocr_orientation": 16.1,
     "ocr_bandeau": 59.6
   },
-
   "bout_en_bout_depuis_image_720p_ms": {
     "identification_complete": 96.0,
     "identification_sans_ocr_bandeau": 36.5
   },
-
   "repartition_du_cout": {
     "modele_embedding_pct": 3,
     "ocr_vision_pct": 79,
@@ -41,7 +41,6 @@
     "reste_pct": 5,
     "consequence": "optimiser le modèle n'apporte rien ; c'est la fréquence d'appel des OCR qui décide"
   },
-
   "budget_video_30fps_ms": {
     "budget_par_image": 33.3,
     "par_image_detection_seule_720p": 12.7,
@@ -49,11 +48,28 @@
     "une_fois_en_tache_de_fond_ocr_bandeau": 59.6,
     "carte_deja_identifiee_et_suivie": 0.0
   },
-
   "a_mesurer_sur_iphone": [
-    "latence de l'embedding sur l'ANE de l'iPhone (attendue du même ordre)",
-    "coût de Vision sur iPhone — poste dominant, aucune mesure disponible",
     "impact thermique et throttling sur un flux vidéo prolongé",
-    "consommation batterie en scan continu"
-  ]
+    "consommation batterie en scan continu",
+    "coût de Vision sur un flux vidéo continu plutôt que sur photo isolée"
+  ],
+  "iphone_13_pro": {
+    "_comment": "Portage Swift (expo-card-encoder), photos 1080x1920 du flux vidéo, coût PAR APPEL. Module compilé -O : en -Onone les boucles pixel coûtent 100x plus.",
+    "date": "2026-08-07",
+    "etapes_ms": {
+      "detection_deux_detecteurs_1080p": 24.0,
+      "redressement_homographie": 6.4,
+      "pretraitement_geometrique": 1.2,
+      "embedding_neural_engine": 5.5,
+      "recherche_20394_vecteurs": 1.9,
+      "ocr_orientation": 11.0,
+      "ocr_bandeau": 65.0
+    },
+    "crops_par_photo": {
+      "_comment": "Chaque étape par crop est payée autant de fois. C'est le vrai poste de coût, pas le modèle.",
+      "photo_12mpx": 15,
+      "photo_1080p": 13
+    },
+    "piege_build": "SWIFT_OPTIMIZATION_LEVEL=-O obligatoire, même en Debug : filtre de variance 124 ms/crop et rotation 180° 114 ms/crop en -Onone, contre <1 ms optimisés. Vision, Core ML et Accelerate sont insensibles (frameworks précompilés)."
+  }
 }

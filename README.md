@@ -3,10 +3,28 @@
 Reconnaissance de cartes Pokémon à partir d'une photo, **entièrement sur
 l'appareil**, destinée à une app iOS.
 
+> En anglais : [`OVERVIEW.md`](OVERVIEW.md) — architecture, mesures, pièges et
+> limites, en un seul document.
+
 **État actuel : 18 identifications correctes sur 18 photos iPhone réelles**
 (cartes françaises, index anglais, conditions ordinaires — contre-jour,
 pochette, fond chargé, cartes inclinées). Mesuré avec le modèle Core ML exporté,
-sur Mac. Rien n'a encore tourné sur un iPhone.
+sur Mac.
+
+**Ça tourne sur iPhone.** Le portage Swift est intégré à une app Expo,
+[hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), comme
+module natif `expo-card-encoder`, à côté du chemin OCR + TCGdex existant. Sur
+iPhone 13 Pro, l'encodeur fait **5,5 ms** sur le Neural Engine. Ce que le passage
+sur appareil a appris est en [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md)
+§10.
+
+**Récupérer le modèle et l'index** sans reconstruire la chaîne ML — 94 Mo,
+publiés en release :
+
+```bash
+gh release download kit-v1 --repo ArmanetPierre/pokemon-tcg-scanner
+tar -xzf card-encoder-kit.tar.gz -C integration-kit/
+```
 
 ## Principe
 
@@ -88,5 +106,9 @@ Elles ont chacune coûté du temps, et sont détaillées dans
 Tout est dans [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md) :
 pipeline étape par étape avec l'API native correspondante, pièges,
 seuils de confiance, format des fichiers, fixtures de validation, et budget
-temps pour un flux vidéo (§9 — le modèle tourne en 3,3 ms sur le Neural Engine
-et ne pèse que 3 % du coût).
+temps pour un flux vidéo (§9 — le modèle ne pèse que 3 % du coût total ; les
+deux OCR de Vision en pèsent 79 %).
+
+Un portage existe déjà et sert de référence :
+[`modules/expo-card-encoder`](https://github.com/hugo-heer/poke-scanner/tree/main/modules/expo-card-encoder)
+dans l'app poke-scanner — Swift, avec son propre README.
