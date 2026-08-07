@@ -40,6 +40,47 @@ limit worth knowing, and one the pipeline detects rather than hides (see
 
 ---
 
+## What it can recognise
+
+**20 394 cards across 170 sets** — the English game, from Base Set (1999) to
+Pitch Black.
+
+| Era | Cards | Share |
+|---|---|---|
+| Base / WotC (1999–2003) | 1 780 | 8.7 % |
+| EX (2003–2007) | 1 722 | 8.4 % |
+| Diamond & Pearl / Platinum | 1 417 | 6.9 % |
+| HeartGold SoulSilver / Call of Legends | 544 | 2.7 % |
+| Black & White | 1 416 | 6.9 % |
+| XY | 1 775 | 8.7 % |
+| Sun & Moon | 2 955 | 14.5 % |
+| Sword & Shield | 3 529 | 17.3 % |
+| Scarlet & Violet | 3 249 | 15.9 % |
+| Mega Evolution | 979 | 4.8 % |
+| promos, decks, specials | 1 028 | 5.0 % |
+
+Not covered: the Japanese-only game (the index is entirely English, though
+French cards are recognised — the artwork dominates the text by a wide margin),
+the newest promo and energy sets, which no public source carries *with an image*,
+and roughly 50 cards that have metadata but no usable scan.
+
+**Being in the index is not the same as being tested.** Every photograph on the
+bench is of a recent card, and **47 % of the index predates Sun & Moon**, where
+borders, art frames and footer layouts differ substantially. Coverage is a count;
+it is not evidence.
+
+Two numbers explain much of the design:
+
+- **92 % of cards share their name with another card.** Pikachu appears 99 times,
+  Eevee 63. This is why confidence has two levels rather than one: the confusion
+  lives *inside* a name, and "right card, unsure which printing" is a useful
+  answer rather than a failure.
+- **Only 38 % of cards are identifiable by their printed number alone.** 63 % of
+  number/total pairs are unique, but those cover just 7 773 cards; the rest share
+  a pair with up to nine others.
+
+---
+
 ## The two repositories
 
 | | |
@@ -221,7 +262,9 @@ Two things that are easy to get wrong and expensive to diagnose:
   the top ten at all, 0.089 behind an unrelated Trainer, while its number read
   cleanly three times running. Promotion can only reorder candidates the search
   returned, so the port resolves a uniquely-printed number directly instead.
-  This is an improvement over the reference implementation, not a port of it.
+  This is an improvement over the reference implementation, not a port of it —
+  but it only reaches the **38 %** of cards whose number/total pair is unique.
+  For the other 62 %, a card the search misses stays missed.
 - **Older cards are untested.** Every test photograph is of a recent card. Base,
   Neo and EX era layouts differ substantially.
 - **Language.** The index is English, and French cards are recognised — the

@@ -307,7 +307,12 @@ l'implémentation sans que ce soit un problème.
   « MEP », énergies « MEE ») ne sont dans aucune source publique **avec
   image**. Le garde-fou du §7 les signale au lieu de les attribuer à tort.
 - **Cartes anciennes non testées** : toutes les photos portent sur des cartes
-  récentes. Les mises en page des séries Base, Neo ou EX diffèrent nettement.
+  récentes, alors que **47 % de l'index est antérieur à Sun & Moon**. Les mises
+  en page des séries Base, Neo ou EX diffèrent nettement — bordures, cadre
+  d'illustration, position du bandeau. Être dans l'index ne prouve rien sur la
+  reconnaissance : la couverture est un décompte, pas une mesure.
+- **Réimpressions** : 92 % des cartes partagent leur nom avec une autre (Pikachu
+  apparaît 99 fois). C'est la raison d'être des deux niveaux de confiance du §5.
 - **Langue** : l'index est en anglais, mais les cartes françaises sont
   reconnues (l'illustration prime largement sur le texte). Non testé sur
   japonais.
@@ -470,6 +475,13 @@ lequel c'est.
 
 C'est le pendant positif du garde-fou « hors index » du §2 — la même table,
 utilisée pour trouver plutôt que pour disqualifier.
+
+⚠️ **Ce rattrapage ne couvre que 38 % des cartes.** 63 % des couples
+numéro/total sont uniques, mais ils ne concernent que 7 773 cartes sur 20 394 —
+les autres partagent leur couple avec jusqu'à 9 cartes, et un couple partagé ne
+désigne rien. Pour ces 62 %, une carte que la recherche visuelle manque reste
+manquée. C'est la limite à garder en tête avant de considérer le problème réglé :
+le correctif est utile, il n'est pas un filet.
 
 ### Le filtre de rééchantillonnage, côté Core Graphics
 
