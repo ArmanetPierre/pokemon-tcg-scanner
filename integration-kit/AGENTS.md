@@ -7,8 +7,17 @@ la logique de décision validée.
 > **Statut mesuré** : 18 identifications correctes sur 18 photos iPhone réelles
 > (cartes françaises, index anglais, conditions ordinaires : contre-jour,
 > pochette, fond chargé, cartes inclinées). Mesures faites sur Mac avec le
-> modèle Core ML exporté ici. **Rien n'a encore tourné sur un iPhone** — les
-> temps donnés plus bas sont ceux du Mac.
+> modèle Core ML exporté ici.
+>
+> **Ça tourne maintenant sur iPhone.** Portage Swift intégré à une app Expo, mesuré
+> sur iPhone 13 Pro : voir §8. L'encodeur y fait **5,5 ms** sur le Neural Engine.
+> Le §10 rassemble ce que le passage sur appareil a appris — dont une lacune du
+> pipeline que seul un vrai jeu de photos a fait apparaître.
+
+> **Récupérer le modèle et l'index** : ils ne sont pas dans le dépôt (94 Mo).
+> Une archive est publiée en release, `kit-v1` — c'est ce que télécharge le
+> `sync-model.mjs` de l'app. Les régénérer demande les 5,5 Go d'images de
+> référence.
 
 > **Flux vidéo** : adapté. L'embedding tourne en **3,3 ms** sur le Neural
 > Engine et ne représente que 3 % du coût total ; le poste dominant est l'OCR de
@@ -309,8 +318,40 @@ l'implémentation sans que ce soit un problème.
 
 Toutes les mesures ci-dessous ont été faites **sur Mac M3 Pro**, avec le
 `.mlpackage` de ce kit. Elles sont reprises dans `benchmarks.json` pour
-comparaison. **L'iPhone reste à mesurer** — c'est la première chose à faire une
-fois l'app lancée.
+comparaison.
+
+### Sur iPhone 13 Pro
+
+Portage Swift, photos 1080×1920 issues du flux vidéo, par appel :
+
+| Étape | iPhone 13 Pro | Mac M3 Pro |
+|---|---|---|
+| détection (les deux détecteurs) | 24 ms | 26 ms |
+| redressement | 6,4 ms | 2,9 ms |
+| OCR d'orientation | 11 ms | 9,5 ms |
+| prétraitement géométrique | 1,2 ms | 1,0 ms |
+| **embedding (Neural Engine)** | **5,5 ms** | **4,1 ms** |
+| recherche sur 20 394 vecteurs | 1,9 ms | 0,6 ms |
+| OCR du bandeau | 65 ms | 60 ms |
+
+Le modèle tient donc largement la promesse du §9 sur du matériel réel.
+
+⚠️ **Compiler le portage en `-O`, même en Debug.** Le reste de l'app peut rester
+non optimisé, pas ce code. Les deux boucles pixel par pixel — le filtre de
+variance et la rotation à 180° — coûtent **124 ms et 114 ms par crop** en
+`-Onone` contre moins d'une milliseconde optimisées. Sur huit crops, c'est 1,8 s
+d'un scan de 2,3 s, entièrement imputable à la configuration de build. Tout ce
+qui passe par Vision, Core ML ou Accelerate est insensible : ce sont des
+frameworks précompilés.
+
+⚠️ **Le nombre de crops est le vrai poste de coût, pas le modèle.** Une photo
+12 Mpx produit jusqu'à **15 hypothèses** (8 quadrilatères dédoublonnés, dont
+plusieurs à orientation indécise qui comptent double). Le « 96 ms de bout en
+bout » ci-dessous suppose une image 720p où les détecteurs trouvent bien moins de
+candidats. Instrumenter par appel et non en cumul, sans quoi les chiffres ne
+veulent rien dire.
+
+### Sur Mac M3 Pro
 
 ### Réglage obligatoire : forcer le Neural Engine
 
@@ -407,7 +448,57 @@ complet reste le cas difficile.
 
 ---
 
-## 10. Mettre à jour l'index
+## 10. Ce que le passage sur iPhone a appris
+
+Trois choses que seul un vrai portage a fait apparaître. Elles ne sont pas dans
+`reference-python/`, qui reste par ailleurs la référence de comportement.
+
+### La promotion par le bandeau ne suffit pas — il faut la recherche par numéro
+
+L'étape 7 réordonne les candidats du top-k. Elle est donc impuissante dans un cas
+précis : **le numéro est lu proprement, la carte existe, et l'embedding ne l'a
+jamais fait remonter**. Mesuré sur une photo d'Inkay (`me5-51`), dont le bandeau
+a donné `051/084` trois fois de suite, pendant que le classement était mené par
+un Dresseur sans rapport situé **0,089 au-dessus**.
+
+Le correctif : si aucun candidat ne porte le numéro lu et qu'**une seule carte de
+tout l'index** le porte, aller la chercher directement. Un couple unique parmi
+20 394 identifie la carte sans discussion, et c'est une preuve plus forte que
+n'importe quel score de similarité. Se restreindre au cas unique n'est pas de la
+prudence sur la lecture : un numéro partagé par plusieurs tirages ne dit pas
+lequel c'est.
+
+C'est le pendant positif du garde-fou « hors index » du §2 — la même table,
+utilisée pour trouver plutôt que pour disqualifier.
+
+### Le filtre de rééchantillonnage, côté Core Graphics
+
+PIL n'a pas d'équivalent exact. Les quatre filtres, mesurés sur
+`test/reference_card.jpg` — qui est dans l'index, donc sa propre similarité est
+la note à battre (Python obtient 0,9951) :
+
+| filtre | similarité |
+|---|---|
+| `.medium` | **0,9938** |
+| `.high` | 0,9926 |
+| `.low` | 0,9854 |
+| `.none` | 0,9656 |
+
+`.medium` gagne, et c'est aussi celui qui est bilinéaire plutôt que bicubique —
+la distinction que le §3 demande de respecter.
+
+### Le simulateur iOS ne vaut rien pour juger la précision
+
+Core ML s'y comporte à l'identique (self-test à 0,9944 contre 0,9938 sur Mac),
+**mais pas Vision** : le segmenteur de document cadre autrement et le
+recognizer lit moins. Sur les trois fixtures du §6, une seule reproduit
+exactement, une perd son numéro de bandeau et une donne une mauvaise carte. Le
+simulateur sert à vérifier que le module charge et que la chaîne tourne ; la
+précision se juge sur appareil.
+
+---
+
+## 11. Mettre à jour l'index
 
 Une nouvelle extension ne demande **aucun réentraînement** : il suffit de
 régénérer `index.bin` et `cards.json` et de les remplacer. Le modèle ne change
