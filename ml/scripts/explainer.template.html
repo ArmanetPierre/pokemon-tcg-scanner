@@ -1,0 +1,956 @@
+<meta charset="utf-8">
+<title>Comment une carte est reconnue</title>
+
+<style>
+  :root {
+    --paper: #f2f3ef;
+    --paper-2: #e9ebe5;
+    --ink: #14181d;
+    --muted: #5c6570;
+    --faint: #8b939b;
+    --rule: #d6d9d2;
+    --accent: #b4304a;
+    --accent-soft: rgba(180, 48, 74, 0.1);
+    --plate: #11161c;
+    --plate-ink: #e6e8e3;
+    --plate-muted: #7e8892;
+    --plate-rule: #232b33;
+    --good: #2f7d5a;
+    --warn: #a8761f;
+    --bad: #b4304a;
+
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --measure: 62ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0e1216;
+      --paper-2: #141a20;
+      --ink: #e8eae6;
+      --muted: #8a939c;
+      --faint: #6b747c;
+      --rule: #232a31;
+      --accent: #e0576f;
+      --accent-soft: rgba(224, 87, 111, 0.14);
+      --plate: #080b0e;
+      --plate-ink: #e8eae6;
+      --plate-muted: #7e8892;
+      --plate-rule: #1c232a;
+      --good: #4bb083;
+      --warn: #d8a441;
+      --bad: #e0576f;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0e1216;
+    --paper-2: #141a20;
+    --ink: #e8eae6;
+    --muted: #8a939c;
+    --faint: #6b747c;
+    --rule: #232a31;
+    --accent: #e0576f;
+    --accent-soft: rgba(224, 87, 111, 0.14);
+    --plate: #080b0e;
+    --plate-ink: #e8eae6;
+    --plate-muted: #7e8892;
+    --plate-rule: #1c232a;
+    --good: #4bb083;
+    --warn: #d8a441;
+    --bad: #e0576f;
+  }
+
+  :root[data-theme="light"] {
+    --paper: #f2f3ef;
+    --paper-2: #e9ebe5;
+    --ink: #14181d;
+    --muted: #5c6570;
+    --faint: #8b939b;
+    --rule: #d6d9d2;
+    --accent: #b4304a;
+    --accent-soft: rgba(180, 48, 74, 0.1);
+    --plate: #11161c;
+    --plate-ink: #e6e8e3;
+    --plate-muted: #7e8892;
+    --plate-rule: #232b33;
+    --good: #2f7d5a;
+    --warn: #a8761f;
+    --bad: #b4304a;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+  .column { max-width: var(--measure); }
+
+  /* ---- type ---- */
+  h1, h2, h3 { font-family: var(--serif); font-weight: 400; text-wrap: balance; }
+  h1 { font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.02; letter-spacing: -0.02em; margin: 0; }
+  h2 { font-size: clamp(1.6rem, 3vw, 2.15rem); line-height: 1.12; letter-spacing: -0.01em; margin: 0; }
+  h3 { font-size: 1.18rem; line-height: 1.25; margin: 0; }
+  p { margin: 0; }
+  a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .lede { font-size: 1.22rem; line-height: 1.5; color: var(--muted); }
+  .note { font-size: 0.93rem; color: var(--muted); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- structure ---- */
+  section { padding-top: 88px; }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+  .stack-sm { display: flex; flex-direction: column; gap: 10px; }
+  .rule { height: 1px; background: var(--rule); border: 0; margin: 0; }
+
+  /* Repères de calibration : la page se présente comme une planche de contrôle,
+     et ces marques en sont le vocabulaire d'origine. */
+  .masthead {
+    padding-top: 56px;
+    display: grid;
+    gap: 28px;
+  }
+  .registration {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .registration::before,
+  .registration::after {
+    content: "";
+    height: 9px; width: 9px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    flex: none;
+  }
+  .registration::after { flex: 1; border-radius: 0; border-width: 1px 0 0 0; height: 0; width: auto; border-color: var(--rule); }
+
+  .figures { display: flex; flex-wrap: wrap; gap: 36px; }
+  .figure-value { font-family: var(--mono); font-size: 1.7rem; font-variant-numeric: tabular-nums; line-height: 1; }
+  .figure-label { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+
+  /* ---- planches ---- */
+  .plate {
+    background: var(--plate);
+    color: var(--plate-ink);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .plate-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--plate-rule);
+    font-family: var(--mono); font-size: 0.72rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--plate-muted);
+  }
+
+  /* ---- carte ---- */
+  .atlas { display: grid; grid-template-columns: 1fr 268px; min-height: 560px; }
+  @media (max-width: 860px) { .atlas { grid-template-columns: 1fr; } }
+
+  .canvas-holder { position: relative; }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    transform: translate(-50%, calc(-100% - 14px));
+    background: var(--plate-ink); color: var(--plate);
+    padding: 7px 10px; border-radius: 2px;
+    font-family: var(--mono); font-size: 0.72rem; line-height: 1.45;
+    white-space: nowrap; transition: opacity 120ms;
+  }
+  .tooltip strong { font-weight: 700; }
+
+  .side {
+    border-left: 1px solid var(--plate-rule);
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    font-size: 0.86rem;
+    overflow-y: auto; max-height: 560px;
+  }
+  @media (max-width: 860px) { .side { border-left: 0; border-top: 1px solid var(--plate-rule); max-height: none; } }
+
+  .side h4 {
+    margin: 0; font-family: var(--mono); font-size: 0.68rem;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--plate-muted); font-weight: 400;
+  }
+  .legend { display: flex; flex-direction: column; gap: 5px; }
+  .legend button {
+    display: flex; align-items: center; gap: 9px;
+    background: none; border: 0; padding: 2px 0;
+    color: inherit; font: inherit; font-size: 0.79rem;
+    cursor: pointer; text-align: left; width: 100%;
+    opacity: 1; transition: opacity 120ms;
+  }
+  .legend button[aria-pressed="false"] { opacity: 0.32; }
+  .legend .swatch { width: 10px; height: 10px; flex: none; border-radius: 1px; }
+  .legend .tally { margin-left: auto; font-family: var(--mono); font-size: 0.7rem; color: var(--plate-muted); font-variant-numeric: tabular-nums; }
+
+  .picked { display: flex; flex-direction: column; gap: 3px; }
+  .picked-name { font-family: var(--serif); font-size: 1.16rem; line-height: 1.2; }
+  .picked-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--plate-muted); }
+
+  .neighbour-list { display: flex; flex-direction: column; gap: 0; }
+  .neighbour {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 5px 0; border-top: 1px solid var(--plate-rule);
+    font-size: 0.79rem;
+  }
+  .neighbour .rank { font-family: var(--mono); font-size: 0.66rem; color: var(--plate-muted); width: 1.2em; flex: none; }
+  .neighbour .who { flex: 1; min-width: 0; }
+  .neighbour .who span { display: block; font-family: var(--mono); font-size: 0.68rem; color: var(--plate-muted); }
+  .hint { color: var(--plate-muted); font-size: 0.82rem; line-height: 1.5; }
+
+  /* ---- pipeline ---- */
+  .stages { display: flex; flex-direction: column; }
+  .stage {
+    display: grid;
+    grid-template-columns: 2.1rem 1fr 5.5rem;
+    gap: 14px; align-items: center;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--plate-rule);
+  }
+  .stage:last-child { border-bottom: 0; }
+  .stage-index { font-family: var(--mono); font-size: 0.7rem; color: var(--plate-muted); }
+  .stage-name { font-size: 0.92rem; }
+  .stage-name span { display: block; font-family: var(--mono); font-size: 0.68rem; color: var(--plate-muted); margin-top: 1px; }
+  .stage-cost { font-family: var(--mono); font-size: 0.82rem; text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { grid-column: 2 / 4; height: 3px; background: var(--plate-rule); position: relative; margin-top: -4px; }
+  .bar i { position: absolute; inset: 0 auto 0 0; display: block; background: currentColor; }
+  .is-vision { color: var(--accent); }
+  .is-model { color: var(--good); }
+  .is-other { color: var(--plate-muted); }
+
+  .split { display: flex; gap: 2px; margin: 0 18px 18px; }
+  .split div { height: 26px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; }
+
+  /* ---- tableaux ---- */
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  td.n, th.n { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; padding-right: 0; }
+
+  .verdict { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .verdict::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .v-good { color: var(--good); }
+  .v-bad { color: var(--bad); }
+
+  .callout {
+    border-left: 2px solid var(--accent);
+    padding: 2px 0 2px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .footnote { color: var(--faint); font-size: 0.84rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="registration">Reconnaissance de cartes · sur appareil · sans réseau</div>
+    <div class="column stack">
+      <h1>20 455 cartes, et la seule question qui compte&nbsp;: laquelle ?</h1>
+      <p class="lede">
+        Ce scanner n'a rien appris des cartes Pokémon. Il compare une photo à
+        l'apparence de toutes celles qu'il connaît, et se méfie de sa propre
+        réponse. Voici ce qu'il voit.
+      </p>
+    </div>
+    <div class="figures">
+      <div><div class="figure-value">20 455</div><div class="figure-label">cartes indexées</div></div>
+      <div><div class="figure-value">512</div><div class="figure-label">dimensions par carte</div></div>
+      <div><div class="figure-value">5,5 ms</div><div class="figure-label">pour encoder une photo</div></div>
+      <div><div class="figure-value">0</div><div class="figure-label">requête réseau</div></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="column stack" style="margin-bottom: 28px">
+      <span class="eyebrow">Planche 1 — l'espace des cartes</span>
+      <h2>Chaque carte devient un point</h2>
+      <p>
+        Le modèle transforme l'image d'une carte en 512 nombres. Deux cartes qui
+        se ressemblent obtiennent des nombres proches. Reconnaître une photo,
+        c'est alors chercher le point le plus proche — pas classer parmi 20 455
+        étiquettes.
+      </p>
+      <p>
+        Cette carte est cet espace, aplati en deux dimensions. La couleur suit
+        les époques, de 1999 à aujourd'hui.
+        <strong>Cliquez un point</strong> pour voir les huit cartes que le
+        modèle en juge les plus proches.
+      </p>
+    </div>
+
+    <div class="plate">
+      <div class="plate-head">
+        <span>Projection UMAP · métrique cosinus · 20 455 points</span>
+        <span id="atlas-status">molette pour zoomer · glisser pour déplacer</span>
+      </div>
+      <div class="atlas">
+        <div class="canvas-holder">
+          <canvas id="atlas" aria-label="Carte des 20 455 cartes projetées en deux dimensions"></canvas>
+          <div class="tooltip" id="tip"></div>
+        </div>
+        <aside class="side">
+          <div id="panel">
+            <p class="hint">
+              Aucun point sélectionné. Survolez pour identifier une carte,
+              cliquez pour afficher son voisinage — c'est-à-dire ce que le
+              scanner risque de confondre avec elle.
+            </p>
+          </div>
+          <div>
+            <h4>Époques</h4>
+            <div class="legend" id="legend"></div>
+          </div>
+          <button id="reset" style="background:none;border:1px solid var(--plate-rule);color:var(--plate-muted);font:inherit;font-size:0.76rem;padding:6px;border-radius:2px;cursor:pointer">
+            Réinitialiser la vue
+          </button>
+        </aside>
+      </div>
+    </div>
+
+    <div class="column stack" style="margin-top: 28px">
+      <div class="callout">
+        <p>
+          <strong>Les époques ne se séparent pas.</strong> On s'attendrait à voir
+          les années se regrouper — elles se mélangent. Le modèle encode
+          l'illustration, pas la mise en page ni la date&nbsp;: un Dracaufeu de
+          1999 est plus proche d'un Dracaufeu de 2024 que de son voisin de
+          numéro.
+        </p>
+      </div>
+      <p class="note">
+        Les voisinages affichés ne sont pas ceux de cette projection en 2D. Ils
+        sont calculés sur les 512 dimensions d'origine, puis transportés ici —
+        sans quoi la page montrerait la géométrie du dessin plutôt que celle du
+        modèle.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="column stack">
+      <span class="eyebrow">Le piège</span>
+      <h2>Un score de 86 % ne veut rien dire</h2>
+      <p>
+        Toutes les cartes du jeu partagent la même mise en page&nbsp;: un cadre,
+        une illustration, un bandeau de texte. Deux cartes prises au hasard, sans
+        aucun rapport, se ressemblent déjà à <span class="num">0,79</span> sur une
+        échelle de 0 à 1.
+      </p>
+      <p>
+        L'échelle utile ne va donc pas de 0 à 1, mais de
+        <span class="num">0,79</span> à 1. Le pire échec rencontré pendant la
+        mise au point affichait le deuxième meilleur score de tout le jeu
+        d'essai. Ce qui porte l'information, ce n'est pas le score&nbsp;: c'est
+        <strong>l'écart entre le premier candidat et le suivant</strong>.
+      </p>
+      <p>
+        D'où trois verdicts plutôt qu'un pourcentage, et jamais de score affiché
+        à l'utilisateur.
+      </p>
+    </div>
+
+    <div class="scroller column" style="margin-top: 22px; max-width: none">
+      <table>
+        <thead>
+          <tr><th>Verdict</th><th>Condition</th><th>Ce qu'on affiche</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="verdict v-good">Édition exacte</span></td>
+            <td>le numéro imprimé a été lu, ou l'écart au 2<sup>e</sup> dépasse <span class="num">0,03</span></td>
+            <td>la carte et son extension, fermement</td>
+          </tr>
+          <tr>
+            <td><span class="verdict" style="color: var(--warn)">Bonne carte</span></td>
+            <td>l'écart au premier candidat d'un <em>autre nom</em> dépasse <span class="num">0,04</span></td>
+            <td>« Primeape — édition à confirmer »</td>
+          </tr>
+          <tr>
+            <td><span class="verdict v-bad">Incertain</span></td>
+            <td>aucun des deux</td>
+            <td>les cinq candidats, ou une invitation à refaire la photo</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="column note" style="margin-top: 18px">
+      Deux niveaux plutôt qu'un, parce que <strong>92 % des cartes partagent leur
+      nom avec une autre</strong> — Pikachu apparaît 99 fois. La confusion vit
+      donc à l'intérieur d'un même nom, et « bonne carte, édition incertaine »
+      est une réponse utile, pas un échec.
+    </p>
+  </section>
+
+  <section>
+    <div class="column stack" style="margin-bottom: 28px">
+      <span class="eyebrow">Planche 2 — où passe le temps</span>
+      <h2>Le modèle n'est pas le goulot</h2>
+      <p>
+        Sept étapes séparent la photo du verdict. Mesurées sur un iPhone 13 Pro,
+        elles ne coûtent pas ce qu'on croit.
+      </p>
+    </div>
+
+    <div class="plate">
+      <div class="plate-head">
+        <span>Coût par appel · iPhone 13 Pro · photo 1080 × 1920</span>
+        <span>115 ms au total</span>
+      </div>
+      <div class="stages" id="stages"></div>
+      <div class="split" id="split"></div>
+    </div>
+
+    <div class="column stack" style="margin-top: 28px">
+      <div class="callout">
+        <p>
+          <strong>Le réseau de neurones représente 4,8 % du travail.</strong>
+          La lecture de texte d'Apple en fait 87 %. Prendre un modèle plus léger
+          pour aller plus vite reviendrait à optimiser ce qui ne limite rien.
+        </p>
+      </div>
+      <p>
+        C'est cette répartition, et non la vitesse du modèle, qui dicte
+        l'architecture d'un scan en direct&nbsp;: détecter à chaque image,
+        identifier une fois par carte, ne lire le numéro imprimé qu'en arrière-plan.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="column stack" style="margin-bottom: 28px">
+      <span class="eyebrow">Planche 3 — un vrai échec</span>
+      <h2>Quand la ressemblance se trompe</h2>
+      <p>
+        Une photo d'<strong>Inkay</strong>, prise trois fois de suite. Trois fois,
+        le classement par ressemblance est mené par une carte Dresseur sans le
+        moindre rapport. Inkay n'est nulle part dans les dix premiers.
+      </p>
+    </div>
+
+    <div class="plate">
+      <div class="plate-head">
+        <span>Classement par similarité — avant lecture du numéro</span>
+        <span class="v-bad" style="color: var(--bad)">verdict : incertain</span>
+      </div>
+      <div class="scroller">
+        <table style="font-size: 0.86rem">
+          <tbody id="failure-before"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="column stack" style="margin: 28px 0">
+      <p>
+        Le bandeau du bas porte <span class="num">051/084</span>. Une seule carte
+        sur 20 455 porte ce couple numéro/total. La lecture de ce texte minuscule
+        — 1,7 % de la hauteur de la carte — suffit à trancher.
+      </p>
+    </div>
+
+    <div class="plate">
+      <div class="plate-head">
+        <span>Après lecture du numéro imprimé</span>
+        <span class="v-good" style="color: var(--good)">verdict : édition exacte</span>
+      </div>
+      <div class="scroller">
+        <table style="font-size: 0.86rem">
+          <tbody id="failure-after"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="column stack" style="margin-top: 28px">
+      <p class="note">
+        Les écarts positifs se lisent ainsi&nbsp;: ces cartes ressemblaient
+        <em>davantage</em> à la photo qu'Inkay. La preuve imprimée l'emporte sur
+        la ressemblance — c'est le seul cas où le classement visuel est
+        délibérément renversé.
+      </p>
+      <div class="callout">
+        <p>
+          <strong>Ce rattrapage ne couvre que 38 % des cartes.</strong> Il faut
+          que le couple numéro/total soit unique dans tout l'index, ce qui n'est
+          vrai que pour 7 773 cartes. Pour les autres, une carte que la
+          ressemblance manque reste manquée.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="column stack">
+      <span class="eyebrow">Limites</span>
+      <h2>Ce qu'il ne sait pas faire</h2>
+      <p>
+        Un index fermé a une contrepartie&nbsp;: le scanner ne peut renvoyer
+        qu'une carte qu'il connaît. Quand il lit un numéro qui n'appartient à
+        aucune carte de l'index, il le dit plutôt que d'attribuer la voisine.
+      </p>
+    </div>
+
+    <div class="column" style="max-width: none; margin-top: 22px">
+      <div class="scroller">
+        <table>
+          <tbody>
+            <tr>
+              <td style="width: 42%"><strong>57 cartes sans image</strong></td>
+              <td>8 énergies Mega Evolution, 48 cartes McDonald's, une promo HGSS. Aucune source publique n'en a de visuel, donc aucun vecteur possible.</td>
+            </tr>
+            <tr>
+              <td><strong>Cartes qui se chevauchent</strong></td>
+              <td>Les détecteurs ont besoin de voir quatre bords fermés. Sur une photo de cinq cartes empilées, une seule est isolée.</td>
+            </tr>
+            <tr>
+              <td><strong>47 % de l'index non testé</strong></td>
+              <td>Toutes les photos d'essai portent sur des cartes récentes. Être dans l'index ne prouve rien sur la reconnaissance&nbsp;: c'est un décompte, pas une mesure.</td>
+            </tr>
+            <tr>
+              <td><strong>Le japonais</strong></td>
+              <td>L'index est anglais. Les cartes françaises passent — l'illustration prime largement sur le texte — le japonais n'a pas été testé.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="column footnote" style="margin-top: 34px">
+      Index de 20 455 cartes sur 171 extensions, encodeur MobileCLIP2-S2 en 512
+      dimensions, exécuté par le Neural Engine. Projection UMAP en métrique
+      cosinus, la même que la recherche embarquée. Tous les chiffres de cette
+      page sont mesurés, pas estimés.
+    </p>
+  </section>
+
+</div>
+
+<script id="atlas-data" type="application/json">__DATA__</script>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---- données ------------------------------------------------------------
+  const raw = JSON.parse(document.getElementById("atlas-data").textContent);
+
+  const bytes = (b64) => {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  };
+  const asInt16 = (b64) => new Int16Array(bytes(b64).buffer);
+  const asUint16 = (b64) => new Uint16Array(bytes(b64).buffer);
+
+  const N = raw.count;
+  const qx = asInt16(raw.x), qy = asInt16(raw.y);
+  const nameIdx = asUint16(raw.name), setIdx = asUint16(raw.set), numIdx = asUint16(raw.number);
+  const setEra = bytes(raw.setEra);
+  const neighbours = asUint16(raw.neighbours);
+  const K = raw.neighbourCount;
+
+  // Dé-quantification : les entiers 16 bits redeviennent les coordonnées UMAP.
+  const px = new Float32Array(N), py = new Float32Array(N);
+  {
+    const [xl, xs] = raw.scale.x, [yl, ys] = raw.scale.y;
+    for (let i = 0; i < N; i++) {
+      px[i] = ((qx[i] + 32767) / 65534) * xs + xl;
+      py[i] = ((qy[i] + 32767) / 65534) * ys + yl;
+    }
+  }
+
+  const eraOf = (i) => setEra[setIdx[i]];
+  const label = (i) => ({
+    nom: raw.names[nameIdx[i]],
+    ext: raw.sets[setIdx[i]],
+    num: raw.numbers[numIdx[i]],
+  });
+
+  // Rampe chronologique plutôt que catégorielle : l'ordre des époques est une
+  // information, autant que la page l'encode.
+  const RAMP = ["#3b4ca8", "#2f6fa8", "#2a8c9e", "#2f9e86", "#4fa35e",
+                "#86a63f", "#c0a32e", "#d98a2b", "#d96a2b", "#c74b2e",
+                "#7c858d", "#666e76"];
+  const colourOf = (era) => RAMP[era] || "#666e76";
+
+  // ---- carte --------------------------------------------------------------
+  const canvas = document.getElementById("atlas");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const tip = document.getElementById("tip");
+  const panel = document.getElementById("panel");
+  const status = document.getElementById("atlas-status");
+
+  // Cadrage sur les centiles plutôt que sur les extrêmes : UMAP projette
+  // toujours quelques cartes très loin du nuage, et les inclure réduirait la
+  // masse principale — celle qu'on vient regarder — à une tache au centre.
+  // Ces points restent dessinés, simplement hors du cadrage initial.
+  const bounds = (() => {
+    const span = (values) => {
+      const sorted = Float32Array.from(values).sort();
+      const lo = sorted[Math.floor(N * 0.004)];
+      const hi = sorted[Math.floor(N * 0.996)];
+      const pad = (hi - lo) * 0.04;
+      return [lo - pad, hi + pad];
+    };
+    const [x0, x1] = span(px);
+    const [y0, y1] = span(py);
+    return { x0, x1, y0, y1 };
+  })();
+
+  let view = { scale: 1, dx: 0, dy: 0 };
+  let W = 0, H = 0, dpr = 1, base = 1, cx = 0, cy = 0;
+  const hidden = new Set();
+  let picked = -1, hover = -1;
+  let reveal = 0;               // 0 → 1, animation d'apparition
+
+  function resize() {
+    const r = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(320, r.width); H = Math.max(360, r.height);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const pad = 26;
+    base = Math.min((W - pad * 2) / (bounds.x1 - bounds.x0),
+                    (H - pad * 2) / (bounds.y1 - bounds.y0));
+    cx = (bounds.x0 + bounds.x1) / 2;
+    cy = (bounds.y0 + bounds.y1) / 2;
+    draw();
+  }
+
+  const toScreen = (i) => [
+    (px[i] - cx) * base * view.scale + W / 2 + view.dx,
+    (cy - py[i]) * base * view.scale + H / 2 + view.dy,
+  ];
+
+  function draw() {
+    const plate = getComputedStyle(document.documentElement).getPropertyValue("--plate").trim();
+    ctx.fillStyle = plate || "#11161c";
+    ctx.fillRect(0, 0, W, H);
+
+    const r = Math.max(0.7, 1.15 * Math.sqrt(view.scale));
+    const dim = picked >= 0 ? 0.16 : 1;
+
+    // Groupé par époque : onze changements de fillStyle au lieu de 20 455.
+    for (let era = 0; era < RAMP.length; era++) {
+      if (hidden.has(era)) continue;
+      ctx.fillStyle = colourOf(era);
+      ctx.globalAlpha = (picked >= 0 ? dim : 0.72) * reveal;
+      ctx.beginPath();
+      for (let i = 0; i < N; i++) {
+        if (eraOf(i) !== era) continue;
+        const [sx, sy] = toScreen(i);
+        if (sx < -8 || sy < -8 || sx > W + 8 || sy > H + 8) continue;
+        ctx.moveTo(sx + r, sy);
+        ctx.arc(sx, sy, r, 0, 6.2832);
+      }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    if (picked >= 0) {
+      const [ax, ay] = toScreen(picked);
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+
+      ctx.strokeStyle = accent; ctx.lineWidth = 1; ctx.globalAlpha = 0.55;
+      for (let k = 0; k < K; k++) {
+        const [bx, by] = toScreen(neighbours[picked * K + k]);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      for (let k = 0; k < K; k++) {
+        const [bx, by] = toScreen(neighbours[picked * K + k]);
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.arc(bx, by, Math.max(2.4, r * 1.9), 0, 6.2832); ctx.fill();
+      }
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.arc(ax, ay, Math.max(4, r * 3), 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = plate; ctx.lineWidth = 1.6; ctx.stroke();
+    }
+
+    if (hover >= 0 && hover !== picked) {
+      const [hx, hy] = toScreen(hover);
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--plate-ink").trim();
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(hx, hy, Math.max(4, r * 2.6), 0, 6.2832); ctx.stroke();
+    }
+  }
+
+  // Recherche du point sous le curseur : balayage linéaire, 20 455 points
+  // tenant largement dans le budget d'une image.
+  function nearest(mx, my, limit = 14) {
+    let best = -1, bestD = limit * limit;
+    for (let i = 0; i < N; i++) {
+      if (hidden.has(eraOf(i))) continue;
+      const [sx, sy] = toScreen(i);
+      const d = (sx - mx) * (sx - mx) + (sy - my) * (sy - my);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  function showTip(i, mx, my) {
+    if (i < 0) { tip.style.opacity = "0"; return; }
+    const c = label(i);
+    tip.innerHTML = "<strong>" + esc(c.nom) + "</strong><br>" + esc(c.ext) + " · " + esc(c.num);
+    tip.style.left = mx + "px";
+    tip.style.top = my + "px";
+    tip.style.opacity = "1";
+  }
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (m) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+
+  function select(i) {
+    picked = i;
+    if (i < 0) {
+      panel.innerHTML = '<p class="hint">Aucun point sélectionné. Survolez pour ' +
+        'identifier une carte, cliquez pour afficher son voisinage — c\'est-à-dire ' +
+        'ce que le scanner risque de confondre avec elle.</p>';
+      draw();
+      return;
+    }
+    const c = label(i);
+    let html = '<div class="picked">' +
+      '<div class="picked-name">' + esc(c.nom) + "</div>" +
+      '<div class="picked-meta">' + esc(c.ext) + " · " + esc(c.num) + "</div></div>" +
+      '<h4 style="margin-top:14px">Les ' + K + " plus proches</h4>" +
+      '<div class="neighbour-list">';
+    for (let k = 0; k < K; k++) {
+      const j = neighbours[i * K + k];
+      const n = label(j);
+      html += '<div class="neighbour"><span class="rank">' + (k + 1) + "</span>" +
+        '<span class="who">' + esc(n.nom) + "<span>" + esc(n.ext) + " · " + esc(n.num) + "</span></span></div>";
+    }
+    html += "</div>";
+    panel.innerHTML = html;
+    draw();
+  }
+
+  // ---- interactions -------------------------------------------------------
+  let dragging = false, moved = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener("pointerdown", (e) => {
+    dragging = true; moved = false;
+    lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+
+    if (dragging) {
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+      view.dx += dx; view.dy += dy;
+      lastX = e.clientX; lastY = e.clientY;
+      tip.style.opacity = "0";
+      draw();
+      return;
+    }
+    const i = nearest(mx, my);
+    if (i !== hover) { hover = i; draw(); }
+    showTip(i, mx, my);
+  });
+
+  canvas.addEventListener("pointerup", (e) => {
+    dragging = false;
+    if (moved) return;
+    const r = canvas.getBoundingClientRect();
+    const i = nearest(e.clientX - r.left, e.clientY - r.top);
+    select(i === picked ? -1 : i);
+  });
+
+  canvas.addEventListener("pointerleave", () => {
+    hover = -1; tip.style.opacity = "0"; draw();
+  });
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left - W / 2 - view.dx;
+    const my = e.clientY - r.top - H / 2 - view.dy;
+    const factor = Math.exp(-e.deltaY * 0.0016);
+    const next = Math.min(40, Math.max(1, view.scale * factor));
+    const applied = next / view.scale;
+    view.dx -= mx * (applied - 1);
+    view.dy -= my * (applied - 1);
+    view.scale = next;
+    status.textContent = view.scale > 1.05
+      ? "zoom ×" + view.scale.toFixed(1)
+      : "molette pour zoomer · glisser pour déplacer";
+    draw();
+  }, { passive: false });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    view = { scale: 1, dx: 0, dy: 0 };
+    hidden.clear();
+    select(-1);
+    buildLegend();
+    status.textContent = "molette pour zoomer · glisser pour déplacer";
+    draw();
+  });
+
+  // ---- légende ------------------------------------------------------------
+  const tally = new Uint32Array(RAMP.length);
+  for (let i = 0; i < N; i++) tally[eraOf(i)]++;
+
+  function buildLegend() {
+    const host = document.getElementById("legend");
+    host.innerHTML = "";
+    raw.eras.forEach((name, era) => {
+      if (!tally[era]) return;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("aria-pressed", hidden.has(era) ? "false" : "true");
+      b.innerHTML = '<span class="swatch" style="background:' + colourOf(era) + '"></span>' +
+        "<span>" + esc(name) + '</span><span class="tally">' +
+        tally[era].toLocaleString("fr-FR") + "</span>";
+      b.addEventListener("click", () => {
+        hidden.has(era) ? hidden.delete(era) : hidden.add(era);
+        b.setAttribute("aria-pressed", hidden.has(era) ? "false" : "true");
+        draw();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  // ---- planche 2 : le pipeline --------------------------------------------
+  const STAGES = [
+    ["Trouver la carte dans la photo", "VNDetectDocumentSegmentation", 24, "is-vision"],
+    ["Redresser le quadrilatère", "CIPerspectiveCorrection", 6.4, "is-other"],
+    ["Décider du sens de lecture", "VNRecognizeText · rapide", 11, "is-vision"],
+    ["Recadrer au format du modèle", "resize + centre crop", 1.2, "is-other"],
+    ["Encoder en 512 nombres", "Core ML · Neural Engine", 5.5, "is-model"],
+    ["Comparer aux 20 455 cartes", "produit matriciel · Accelerate", 1.9, "is-other"],
+    ["Lire le numéro imprimé", "VNRecognizeText · précis", 65, "is-vision"],
+  ];
+  {
+    const host = document.getElementById("stages");
+    const max = Math.max(...STAGES.map((s) => s[2]));
+    STAGES.forEach(([name, api, ms, klass], i) => {
+      const row = document.createElement("div");
+      row.className = "stage " + klass;
+      row.innerHTML =
+        '<span class="stage-index">' + (i + 1) + "</span>" +
+        '<span class="stage-name">' + esc(name) + "<span>" + esc(api) + "</span></span>" +
+        '<span class="stage-cost">' + ms.toLocaleString("fr-FR") + " ms</span>" +
+        '<span class="bar"><i style="width:' + (ms / max * 100).toFixed(1) + '%"></i></span>';
+      host.appendChild(row);
+    });
+
+    const groups = [
+      ["Lecture de texte (Vision)", 100, "var(--accent)"],
+      ["Géométrie et recherche", 9.5, "var(--plate-muted)"],
+      ["Le modèle", 5.5, "var(--good)"],
+    ];
+    const total = 115;
+    const split = document.getElementById("split");
+    groups.forEach(([name, ms, colour]) => {
+      const d = document.createElement("div");
+      d.style.flex = String(ms);
+      d.style.background = colour;
+      d.style.color = "var(--plate)";
+      d.title = name + " — " + ms + " ms";
+      d.textContent = Math.round(ms / total * 100) + " %";
+      split.appendChild(d);
+    });
+  }
+
+  // ---- planche 3 : l'échec Inkay ------------------------------------------
+  const BEFORE = [
+    ["Beginning Door", "DP Black Star Promos · 54/56", "1er"],
+    ["Ultimate Zone", "DP Black Star Promos · 55/56", "−0,014"],
+    ["Excadrill", "Obsidian Flames · 147/197", "−0,031"],
+    ["Arceus LV.X", "Platinum — Arceus · 94/99", "−0,039"],
+    ["Goldeen", "Pitch Black · 13/84", "−0,044"],
+    ["Inkay", "Pitch Black · 51/84", "absent du top 10"],
+  ];
+  const AFTER = [
+    ["Inkay", "Pitch Black · 51/84", "numéro lu"],
+    ["Ultimate Zone", "DP Black Star Promos · 55/56", "+0,097"],
+    ["Beginning Door", "DP Black Star Promos · 54/56", "+0,089"],
+    ["Excadrill", "Obsidian Flames · 147/197", "+0,047"],
+    ["Goldeen", "Pitch Black · 13/84", "+0,042"],
+  ];
+
+  const fillFailure = (id, rows, markFirst) => {
+    const host = document.getElementById(id);
+    rows.forEach(([nom, ext, gap], i) => {
+      const tr = document.createElement("tr");
+      const strong = markFirst && i === 0;
+      const absent = gap === "absent du top 10";
+      tr.innerHTML =
+        '<td style="border-color: var(--plate-rule); color:' +
+          (absent ? "var(--bad)" : strong ? "var(--good)" : "var(--plate-ink)") + '">' +
+          "<strong>" + esc(nom) + "</strong></td>" +
+        '<td style="border-color: var(--plate-rule); color: var(--plate-muted); font-family: var(--mono); font-size: 0.76rem">' +
+          esc(ext) + "</td>" +
+        '<td class="n" style="border-color: var(--plate-rule); color:' +
+          (absent ? "var(--bad)" : strong ? "var(--good)" : "var(--plate-muted)") +
+          '; font-size: 0.78rem; padding-right: 18px">' + esc(gap) + "</td>";
+      host.appendChild(tr);
+    });
+  };
+  fillFailure("failure-before", BEFORE, false);
+  fillFailure("failure-after", AFTER, true);
+
+  // ---- démarrage ----------------------------------------------------------
+  buildLegend();
+  new ResizeObserver(resize).observe(canvas.parentElement);
+  resize();
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    reveal = 1; draw();
+  } else {
+    const started = performance.now();
+    const step = (now) => {
+      reveal = Math.min(1, (now - started) / 900);
+      draw();
+      if (reveal < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  new MutationObserver(draw).observe(document.documentElement, {
+    attributes: true, attributeFilter: ["data-theme"],
+  });
+})();
+</script>
