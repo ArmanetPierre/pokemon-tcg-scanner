@@ -25,7 +25,7 @@ photo
   → flatten it                           (homography)
   → decide which way up                  (position of text, never the embedding)
   → turn it into a 512-number vector     (Core ML, MobileCLIP2-S2)
-  → find the closest of 20 394 vectors   (cosine similarity)
+  → find the closest of 20 455 vectors   (cosine similarity)
   → read the printed collector number    (Vision, on the bottom edge)
 → card + confidence level
 ```
@@ -42,7 +42,7 @@ limit worth knowing, and one the pipeline detects rather than hides (see
 
 ## What it can recognise
 
-**20 394 cards across 170 sets** — the English game, from Base Set (1999) to
+**20 455 cards across 171 sets** — the English game, from Base Set (1999) to
 Pitch Black.
 
 | Era | Cards | Share |
@@ -56,13 +56,22 @@ Pitch Black.
 | Sun & Moon | 2 955 | 14.5 % |
 | Sword & Shield | 3 529 | 17.3 % |
 | Scarlet & Violet | 3 249 | 15.9 % |
-| Mega Evolution | 979 | 4.8 % |
+| Mega Evolution (incl. MEP promos) | 1 039 | 5.1 % |
 | promos, decks, specials | 1 028 | 5.0 % |
 
 Not covered: the Japanese-only game (the index is entirely English, though
 French cards are recognised — the artwork dominates the text by a wide margin),
-the newest promo and energy sets, which no public source carries *with an image*,
-and roughly 50 cards that have metadata but no usable scan.
+and **57 cards for which no public source holds an image at all** — the eight
+Mega Evolution energies, 48 McDonald's Collection cards, and one HGSS promo. A
+card without an image cannot have an embedding; the pipeline reports those as
+unknown rather than attributing them to a neighbour.
+
+Filling that gap needs care rather than effort. The fallback CDN never returns
+404: it answers any unknown identifier with a placeholder over HTTP 200. Trusting
+the status code would have added 57 identical card backs to the index, which
+would then behave as universal attractors — every poor photograph would resemble
+them. Availability is therefore decided on a content digest, in
+`ml/src/fallback_images.py`.
 
 **Being in the index is not the same as being tested.** Every photograph on the
 bench is of a recent card, and **47 % of the index predates Sun & Moon**, where
@@ -108,14 +117,14 @@ The encoder and the index are ~94 MB and are not in git. A built copy is
 published as a release:
 
 ```bash
-gh release download kit-v1 --repo ArmanetPierre/pokemon-tcg-scanner
+gh release download kit-v2 --repo ArmanetPierre/pokemon-tcg-scanner
 tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 ```
 
 | File | Size | Role |
 |---|---|---|
 | `CardEncoder.mlpackage` | 69 MB | image → 512-dimension vector |
-| `index.bin` | 20 MB | 20 394 float16 vectors, L2-normalised |
+| `index.bin` | 21 MB | 20 455 float16 vectors, L2-normalised |
 | `index.json` | 0.2 MB | index shape and `card_ids`, in row order |
 | `cards.json` | 4.1 MB | display metadata, aligned with the index |
 
@@ -131,7 +140,8 @@ index, and the test photographs.
 cd ml
 python3.11 -m venv .venv && .venv/bin/pip install -e .
 
-.venv/bin/python scripts/build_metadata.py     # metadata for 20 444 cards
+.venv/bin/python scripts/build_metadata.py     # metadata, from pokemon-tcg-data
+.venv/bin/python scripts/add_missing_cards.py  # sets that source lacks, from TCGdex
 .venv/bin/python scripts/download_images.py    # high-resolution images, ~15 min
 .venv/bin/python scripts/build_embeddings.py   # vector index, ~6 min on an M3
 
@@ -140,7 +150,8 @@ python3.11 -m venv .venv && .venv/bin/pip install -e .
 ```
 
 `scripts/refresh_index.py --check` reports sets released since the index was
-last built.
+last built; `scripts/add_missing_cards.py --check` says which of them can
+actually be added, and which have no image anywhere.
 
 ## Checking it
 
@@ -226,7 +237,7 @@ that set with no over-claiming, but deserve re-confirming on a wider sample.
 | orientation OCR | 11 ms | 9.5 ms |
 | geometric preprocessing | 1.2 ms | 1.0 ms |
 | **embedding (Neural Engine)** | **5.5 ms** | **4.1 ms** |
-| search over 20 394 vectors | 1.9 ms | 0.6 ms |
+| search over 20 455 vectors | 1.9 ms | 0.6 ms |
 | collector-number OCR | 65 ms | 60 ms |
 
 The striking part is the split: **the model is about 3 % of an identification,

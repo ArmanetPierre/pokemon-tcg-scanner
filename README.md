@@ -22,7 +22,7 @@ sur appareil a appris est en [`integration-kit/AGENTS.md`](integration-kit/AGENT
 publiés en release :
 
 ```bash
-gh release download kit-v1 --repo ArmanetPierre/pokemon-tcg-scanner
+gh release download kit-v2 --repo ArmanetPierre/pokemon-tcg-scanner
 tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 ```
 
@@ -35,7 +35,7 @@ règle en régénérant l'index, sans réentraînement.
 ```
 photo → détection du quadrilatère (Vision) → redressement (homographie)
      → orientation par position du texte → embedding (MobileCLIP2-S2, 512 dims)
-     → recherche cosinus sur 20 394 cartes → lecture du numéro imprimé
+     → recherche cosinus sur 20 455 cartes → lecture du numéro imprimé
      → carte + niveau de confiance
 ```
 
@@ -59,7 +59,8 @@ binaire et les photos de test.
 cd ml
 python3.11 -m venv .venv && .venv/bin/pip install -e .
 
-.venv/bin/python scripts/build_metadata.py      # métadonnées des 20 444 cartes
+.venv/bin/python scripts/build_metadata.py      # métadonnées (pokemon-tcg-data)
+.venv/bin/python scripts/add_missing_cards.py   # sets que cette source ignore (TCGdex)
 .venv/bin/python scripts/download_images.py     # images haute résolution (~15 min)
 .venv/bin/python scripts/build_embeddings.py    # index vectoriel (~6 min sur M3)
 ```
@@ -72,7 +73,11 @@ Puis, pour reconstituer le kit d'intégration :
 ```
 
 `scripts/refresh_index.py --check` signale les sets sortis depuis la dernière
-construction.
+construction ; `scripts/add_missing_cards.py --check` dit lesquels sont
+réellement ajoutables et lesquels n'ont d'image nulle part.
+
+**Index : 20 455 cartes, 171 sets.** 57 cartes restent hors index faute d'image
+publique — 8 énergies Mega Evolution, 48 cartes McDonald's, une promo HGSS.
 
 ## Vérifier
 
