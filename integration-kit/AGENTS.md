@@ -1,7 +1,7 @@
 # Reconnaissance de cartes Pokémon TCG — kit d'intégration iOS
 
 Ce kit identifie une carte Pokémon à partir d'une photo, **entièrement sur
-l'appareil**, sans réseau. Il contient le modèle, l'index des 20 455 cartes, et
+l'appareil**, sans réseau. Il contient le modèle, l'index des 20 504 cartes, et
 la logique de décision validée.
 
 > **Statut mesuré** : 18 identifications correctes sur 18 photos iPhone réelles
@@ -15,7 +15,7 @@ la logique de décision validée.
 > pipeline que seul un vrai jeu de photos a fait apparaître.
 
 > **Récupérer le modèle et l'index** : ils ne sont pas dans le dépôt (94 Mo).
-> Une archive est publiée en release, `kit-v2` — c'est ce que télécharge le
+> Une archive est publiée en release, `kit-v3` — c'est ce que télécharge le
 > `sync-model.mjs` de l'app. Les régénérer demande les 5,5 Go d'images de
 > référence.
 
@@ -31,7 +31,7 @@ la logique de décision validée.
 | Fichier | Taille | Rôle |
 |---|---|---|
 | `CardEncoder.mlpackage` | 69 Mo | encodeur d'image → vecteur de 512 dimensions |
-| `index.bin` | 21 Mo | 20 455 vecteurs float16, L2-normalisés |
+| `index.bin` | 21 Mo | 20 504 vecteurs float16, L2-normalisés |
 | `index.json` | 0,2 Mo | forme de `index.bin` + `card_ids` dans l'ordre des lignes |
 | `cards.json` | 4,3 Mo | métadonnées d'affichage, même ordre que l'index |
 | `encoder_meta.json` | — | géométrie du prétraitement à reproduire |
@@ -119,7 +119,7 @@ soustraire ni diviser côté Swift.
 ### 6. Recherche
 
 Similarité cosinus = produit scalaire, puisque tout est normalisé. Un produit
-matrice-vecteur `(20455 × 512) · (512)` via Accelerate suffit. Aucune
+matrice-vecteur `(20504 × 512) · (512)` via Accelerate suffit. Aucune
 bibliothèque vectorielle nécessaire.
 
 Descendre à **10 candidats** minimum : la marge de nom (§5) a besoin de trouver
@@ -142,7 +142,7 @@ prévisible sur ce bandeau : `O Q D → 0`, `I l | ) ] → 1`, `Z → 2`, `S →
 **Garde-fou hors index** : si un numéro est lu proprement mais qu'aucune carte
 de toute la base ne porte ce couple numéro/total, afficher « carte inconnue »
 plutôt qu'une attribution confiante. Trois cartes testées étaient dans ce cas ;
-depuis, les 60 promos MEP sont entrées dans l'index (kit-v2) et il ne reste que
+depuis, les 60 promos MEP sont entrées dans l'index (kit-v3) et il ne reste que
 les 8 énergies MEE, dont aucune source publique n'a d'image.
 
 ---
@@ -212,7 +212,7 @@ classement par similarité, **puis** relever le niveau si l'OCR a tranché.
 ### `index.bin`
 
 Tableau brut, **sans en-tête** : `count × dim` valeurs `float16`, ligne par
-ligne (row-major). `index.json` donne `count` (20455), `dim` (512) et
+ligne (row-major). `index.json` donne `count` (20504), `dim` (512) et
 `card_ids` — le n-ième identifiant correspond à la n-ième ligne.
 
 ```swift
@@ -308,7 +308,7 @@ l'implémentation sans que ce soit un problème.
   source publique — 8 énergies « MEE », 48 cartes McDonald's, une promo HGSS.
   Sans image, pas d'embedding ; le garde-fou du §7 les signale au lieu de les
   attribuer à tort. Les promos « MEP », longtemps dans ce cas, sont entrées
-  dans l'index en kit-v2.
+  dans l'index en kit-v3.
   ⚠️ Le CDN de secours utilisé pour les récupérer (`images.scrydex.com`) ne
   renvoie **jamais** 404 : il sert un placeholder en HTTP 200 pour tout
   identifiant inconnu. Les ajouter sur la foi du code de statut aurait injecté
@@ -344,7 +344,7 @@ Portage Swift, photos 1080×1920 issues du flux vidéo, par appel :
 | OCR d'orientation | 11 ms | 9,5 ms |
 | prétraitement géométrique | 1,2 ms | 1,0 ms |
 | **embedding (Neural Engine)** | **5,5 ms** | **4,1 ms** |
-| recherche sur 20 455 vecteurs | 1,9 ms | 0,6 ms |
+| recherche sur 20 504 vecteurs | 1,9 ms | 0,6 ms |
 | OCR du bandeau | 65 ms | 60 ms |
 
 Le modèle tient donc largement la promesse du §9 sur du matériel réel.
@@ -394,7 +394,7 @@ Laisser Core ML choisir seul (`.all`) coûte presque le double :
 | redressement (homographie) | 0,5 ms |
 | prétraitement géométrique | 1,8 ms |
 | **embedding (Neural Engine)** | **3,3 ms** |
-| recherche sur 20 455 vecteurs | 0,5 ms |
+| recherche sur 20 504 vecteurs | 0,5 ms |
 | OCR d'orientation | 16,1 ms |
 | OCR du bandeau | 59,6 ms |
 
@@ -476,7 +476,7 @@ un Dresseur sans rapport situé **0,089 au-dessus**.
 
 Le correctif : si aucun candidat ne porte le numéro lu et qu'**une seule carte de
 tout l'index** le porte, aller la chercher directement. Un couple unique parmi
-20 455 identifie la carte sans discussion, et c'est une preuve plus forte que
+20 504 identifie la carte sans discussion, et c'est une preuve plus forte que
 n'importe quel score de similarité. Se restreindre au cas unique n'est pas de la
 prudence sur la lecture : un numéro partagé par plusieurs tirages ne dit pas
 lequel c'est.
@@ -485,7 +485,7 @@ C'est le pendant positif du garde-fou « hors index » du §2 — la même table
 utilisée pour trouver plutôt que pour disqualifier.
 
 ⚠️ **Ce rattrapage ne couvre que 38 % des cartes.** 63 % des couples
-numéro/total sont uniques, mais ils ne concernent que 7 773 cartes sur 20 455 —
+numéro/total sont uniques, mais ils ne concernent que 7833 cartes sur 20504 —
 les autres partagent leur couple avec jusqu'à 9 cartes, et un couple partagé ne
 désigne rien. Pour ces 62 %, une carte que la recherche visuelle manque reste
 manquée. C'est la limite à garder en tête avant de considérer le problème réglé :
