@@ -49,7 +49,17 @@ FOLDERS = {
     "2015": "mcd15",
     "2017": "mcd17",
     "2018": "mcd18",
+    "energie": "mee",
 }
+
+# Sets que `pokemon-tcg-data` ignore entièrement — pas seulement leurs images,
+# leurs métadonnées aussi. Elles sont alors reprises de TCGdex, qui les
+# référence sans visuel. La valeur est l'identifiant du set chez eux.
+FROM_TCGDEX = {
+    "mee": "mee",
+}
+
+TCGDEX = "https://api.tcgdex.net/v2/en"
 
 # Fichiers isolés à la racine, pour les cartes qui n'ont pas de set entier à
 # combler. La clé est le nom du fichier sans extension.
@@ -58,8 +68,48 @@ SINGLES = {
 }
 
 
+def key(number: str) -> str:
+    """Numéro réduit à sa valeur, pour comparer « 001 », « 1 » et « 1 »."""
+    number = number.strip()
+    return str(int(number)) if number.isdigit() else number.upper()
+
+
 def target_of(card_id: str) -> Path:
     return IMAGES / card_id.rsplit("-", 1)[0] / f"{card_id}.jpg"
+
+
+def metadata_from_tcgdex(set_id: str, tcgdex_id: str) -> list[dict]:
+    """Fabrique les entrées `cards.json` d'un set que la source principale ignore.
+
+    `image_small` et `image_large` restent nuls : il n'existe aucune URL, et
+    inventer un lien mort serait pire que l'absence — l'app sait n'afficher
+    aucune vignette, elle ne sait pas deviner qu'un lien ne répondra jamais.
+    """
+    import requests
+
+    detail = requests.get(f"{TCGDEX}/sets/{tcgdex_id}", timeout=30).json()
+    printed = detail.get("cardCount", {}) or {}
+    total = printed.get("official") or printed.get("total")
+
+    entries = []
+    for card in detail.get("cards", []):
+        local = str(card.get("localId", ""))
+        entries.append({
+            "id": f"{set_id}-{int(local) if local.isdigit() else local}",
+            "name": card.get("name"),
+            "number": local,
+            "rarity": card.get("rarity"),
+            "artist": card.get("illustrator"),
+            "supertype": card.get("category"),
+            "set_id": set_id,
+            "set_name": detail.get("name"),
+            "set_series": (detail.get("serie") or {}).get("name"),
+            "set_printed_total": total,
+            "release_date": detail.get("releaseDate"),
+            "image_small": None,
+            "image_large": None,
+        })
+    return entries
 
 
 def convert(source: Path, destination: Path) -> tuple[int, int]:
@@ -86,23 +136,28 @@ def collect(cards: dict[str, dict]) -> list[tuple[Path, str]]:
             problems.append(f"{folder}/ : dossier absent")
             continue
 
-        expected = {c["number"]: c for c in cards.values() if c["set_id"] == set_id}
+        # Rapprochement sur la valeur du numéro, pas sur son écriture : les
+        # sources ne s'accordent pas sur le remplissage — TCGdex écrit « 001 »
+        # là où pokemon-tcg-data écrit « 1 », et personne ne nomme ses fichiers
+        # avec des zéros de tête.
+        expected = {
+            key(c["number"]): c for c in cards.values() if c["set_id"] == set_id
+        }
         # Les fichiers cachés que macOS sème un peu partout ne sont pas des
         # cartes manquantes, et les signaler comme telles noie les vrais trous.
         files = [p for p in directory.iterdir() if p.is_file() and not p.name.startswith(".")]
 
         for path in sorted(files, key=lambda p: p.stem):
-            number = path.stem.strip()
-            card = expected.get(number)
+            card = expected.get(key(path.stem.strip()))
             if card is None:
-                problems.append(f"{folder}/{path.name} : aucun {set_id} numéro {number}")
+                problems.append(f"{folder}/{path.name} : aucun {set_id} numéro {path.stem.strip()}")
                 continue
             pairs.append((path, card["id"]))
 
-        seen = {p.stem.strip() for p in files}
-        for number in sorted(expected, key=lambda n: int(n) if n.isdigit() else 0):
+        seen = {key(p.stem.strip()) for p in files}
+        for number, card in sorted(expected.items()):
             if number not in seen:
-                problems.append(f"{set_id}-{number} ({expected[number]['name']}) : fichier manquant")
+                problems.append(f"{card['id']} ({card['name']}) : fichier manquant")
 
     for stem, card_id in SINGLES.items():
         matches = list(SOURCE.glob(f"{stem}.*"))
@@ -126,7 +181,23 @@ def main() -> int:
     if not CARDS_JSON.exists():
         sys.exit(f"{CARDS_JSON} absent — lancer d'abord scripts/build_metadata.py")
 
-    cards = {c["id"]: c for c in json.loads(CARDS_JSON.read_text())}
+    records = json.loads(CARDS_JSON.read_text())
+    cards = {c["id"]: c for c in records}
+
+    # Certains sets n'ont même pas de métadonnées : les créer avant d'associer
+    # les fichiers, sinon chaque image serait signalée comme orpheline.
+    created = []
+    for set_id, tcgdex_id in FROM_TCGDEX.items():
+        if any(c["set_id"] == set_id for c in cards.values()):
+            continue
+        if not (SOURCE / next(f for f, s in FOLDERS.items() if s == set_id)).is_dir():
+            continue
+        created = metadata_from_tcgdex(set_id, tcgdex_id)
+        print(f"  + {set_id} : {len(created)} carte(s) reprises de TCGdex "
+              f"({created[0]['set_name']})")
+        for entry in created:
+            cards[entry["id"]] = entry
+
     pairs = collect(cards)
 
     print(f"\n{len(pairs)} image(s) à importer")
@@ -139,6 +210,12 @@ def main() -> int:
     for path, card_id in pairs:
         size = convert(path, target_of(card_id))
         print(f"  {card_id:<14} {cards[card_id]['name']:<18} {size[0]}x{size[1]}")
+
+    if created:
+        merged = records + created
+        merged.sort(key=lambda c: (c.get("release_date") or "", c["id"]))
+        CARDS_JSON.write_text(json.dumps(merged, ensure_ascii=False, indent=1))
+        print(f"\n{len(merged)} cartes -> {CARDS_JSON}  (+{len(created)})")
 
     print(f"\n{len(pairs)} image(s) installées dans {IMAGES}")
     print("Suite : build_embeddings.py, export_index.py")

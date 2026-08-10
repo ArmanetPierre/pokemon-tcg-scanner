@@ -22,7 +22,7 @@ sur appareil a appris est en [`integration-kit/AGENTS.md`](integration-kit/AGENT
 publiés en release :
 
 ```bash
-gh release download kit-v3 --repo ArmanetPierre/pokemon-tcg-scanner
+gh release download kit-v4 --repo ArmanetPierre/pokemon-tcg-scanner
 tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 ```
 
@@ -35,7 +35,7 @@ règle en régénérant l'index, sans réentraînement.
 ```
 photo → détection du quadrilatère (Vision) → redressement (homographie)
      → orientation par position du texte → embedding (MobileCLIP2-S2, 512 dims)
-     → recherche cosinus sur 20 504 cartes → lecture du numéro imprimé
+     → recherche cosinus sur 20 512 cartes → lecture du numéro imprimé
      → carte + niveau de confiance
 ```
 
@@ -76,9 +76,8 @@ Puis, pour reconstituer le kit d'intégration :
 construction ; `scripts/add_missing_cards.py --check` dit lesquels sont
 réellement ajoutables et lesquels n'ont d'image nulle part.
 
-**Index : 20 504 cartes, 175 sets.** Plus aucune carte des métadonnées n'est
-sans image. Il ne reste dehors que les **8 énergies du set `mee`**, absent de
-`pokemon-tcg-data` et sans visuel nulle part.
+**Index : 20 512 cartes, 176 sets.** Plus aucune carte des métadonnées n'est
+sans image. **Plus aucune carte de l'index n'est sans image.**
 
 Les 49 dernières — collections McDonald's 2014/2015/2017/2018 et une promo HGSS —
 ont été récupérées à la main et intégrées par
