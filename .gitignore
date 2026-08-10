@@ -27,4 +27,8 @@ integration-kit/cards.json
 integration-kit/test/*.jpg
 integration-kit/test/*.jpeg
 
+# Sorties d'Embedding Atlas : projection, parquet et application exportée,
+# toutes régénérables par scripts/explore_index.py
+ml/data/atlas/
+
 .DS_Store
