@@ -6,10 +6,12 @@ l'appareil**, destinée à une app iOS.
 > En anglais : [`OVERVIEW.md`](OVERVIEW.md) — architecture, mesures, pièges et
 > limites, en un seul document.
 
-**État actuel : 18 identifications correctes sur 18 photos iPhone réelles**
-(cartes françaises, index anglais, conditions ordinaires — contre-jour,
-pochette, fond chargé, cartes inclinées). Mesuré avec le modèle Core ML exporté,
-sur Mac.
+**État actuel : 31 identifications correctes sur 31 photos iPhone réelles**,
+issues de deux collections photographiées par deux personnes (cartes françaises,
+index anglais, conditions ordinaires — contre-jour, pochette, fond chargé, cartes
+inclinées, et un second lot entièrement en paysage). Une 32ᵉ photo montre un dos
+de carte : la chaîne répond « incertain », ce qui est la bonne réponse. Mesuré
+avec le modèle Core ML exporté, sur Mac.
 
 **Ça tourne sur iPhone.** Le portage Swift est intégré à une app Expo,
 [hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), comme
@@ -116,8 +118,12 @@ Elles ont chacune coûté du temps, et sont détaillées dans
 Tout est dans [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md) :
 pipeline étape par étape avec l'API native correspondante, pièges,
 seuils de confiance, format des fichiers, fixtures de validation, et budget
-temps pour un flux vidéo (§9 — le modèle ne pèse que 3 % du coût total ; les
-deux OCR de Vision en pèsent 79 %).
+temps pour un flux vidéo (§9 — le modèle ne pèse que 5 % du coût d'une
+identification ; les deux OCR de Vision en pèsent les deux tiers). Le §8 donne le
+profil d'une photo entière, où ce qui décide vraiment du temps de traitement est
+le nombre de crops candidats : **287 ms → 159 ms par photo** en écartant les
+quadrilatères trop petits avant tout traitement, et en lisant le bandeau en deux
+passes.
 
 Un portage existe déjà et sert de référence :
 [`modules/expo-card-encoder`](https://github.com/hugo-heer/poke-scanner/tree/main/modules/expo-card-encoder)

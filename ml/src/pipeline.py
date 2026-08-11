@@ -46,9 +46,39 @@ FALLBACK_SCORE = 0.65
 # grand côté de l'image visent la même carte.
 DEDUP_RADIUS = 0.05
 
-# Seuils de confiance, calibrés sur le banc d'essai (18 photos) : marge
+# Un quadrilatère couvrant moins que cette fraction de la photo est écarté avant
+# tout redressement. `VNDetectRectanglesRequest` rend jusqu'à 8 observations, et
+# la plupart sont des rectangles parasites minuscules — sur le banc d'essai, 4 des
+# 6,3 quads par photo font moins de 1 % de la surface, alors que le quad retenu
+# n'est jamais descendu sous 6,6 %. Chacun de ces parasites coûtait un
+# redressement, une passe d'OCR d'orientation et un à deux embeddings.
+#
+# Filtre de SURFACE et non de forme : la perspective écrase fortement le rapport
+# apparent d'une carte (0,66 à 0,94 mesuré sur les quads gagnants du banc, contre
+# 63/88 = 0,72 à plat), un filtre sur le rapport écarterait de vraies cartes.
+#
+# Vaut pour une photo mono-carte, où la carte remplit une bonne part du cadre.
+# Un étalage se scanne avec `MIN_MULTI_QUAD_AREA` : sur IMG_5029, une des cartes
+# ne fait que 1,45 % de la photo, et 2 % la ferait disparaître.
+MIN_QUAD_AREA = 0.02
+
+# Même filtre pour le scan d'un étalage. Quatre fois plus bas : plus de crops à
+# traiter, donc plus lent, mais une carte parmi dix couvre forcément une petite
+# fraction de la photo.
+MIN_MULTI_QUAD_AREA = 0.005
+
+# Palier de comparaison des formes au moment du dédoublonnage (voir
+# `_side_balance`). Deux quads dont l'équilibre des côtés tient dans le même
+# palier sont jugés équivalents, et c'est alors l'ordre des détecteurs qui
+# tranche. Volontairement large : il ne s'agit pas de classer des quads
+# corrects, seulement d'écarter ceux qui sont visiblement cassés.
+SHAPE_BUCKET = 0.10
+
+# Seuils de confiance, calibrés sur les 18 premières photos du banc : marge
 # 1er/2e >= 0,03 donne 100 % de précision sur l'édition exacte ; marge au
 # premier candidat d'un NOM différent >= 0,04 donne 100 % sur l'identité.
+# Inchangés depuis, et tenus sur les 14 photos ajoutées ensuite (seconde
+# collection, plus un dos de carte qui tombe bien en « incertain »).
 # À reconfirmer sur 40+ photos avant de figer côté app.
 FIRM_ID_MARGIN = 0.03
 FIRM_NAME_MARGIN = 0.04
@@ -69,21 +99,61 @@ def _to_pil(bgr: np.ndarray) -> Image.Image:
     return Image.fromarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
 
 
+def _area_fraction(quad: np.ndarray, shape: tuple[int, ...]) -> float:
+    """Surface du quadrilatère rapportée à celle de la photo (formule du lacet)."""
+    x, y = quad[:, 0], quad[:, 1]
+    area = 0.5 * abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+    return float(area / (shape[0] * shape[1]))
+
+
+def _side_balance(quad: np.ndarray) -> float:
+    """Égalité des côtés opposés : 1 pour un rectangle, 0 pour un quad dégénéré.
+
+    Ne suppose RIEN du format de la carte, contrairement à un filtre sur le
+    rapport largeur/hauteur : la perspective écrase ce rapport, mais elle laisse
+    les côtés opposés à peu près égaux sur une photo tenue à la main. Un
+    quadrilatère dont un coin est mal placé, lui, s'effondre — mesuré à 0,50 et
+    0,68 sur les deux détections ratées de Diamat, contre 0,98 sur la bonne.
+    """
+    sides = (
+        (np.linalg.norm(quad[1] - quad[0]), np.linalg.norm(quad[2] - quad[3])),
+        (np.linalg.norm(quad[3] - quad[0]), np.linalg.norm(quad[2] - quad[1])),
+    )
+    ratios = [min(a, b) / max(a, b) for a, b in sides if max(a, b) > 0]
+    return float(min(ratios)) if len(ratios) == 2 else 0.0
+
+
 def load_bgr(path: str) -> np.ndarray | None:
     """Pixels bruts, sans rotation EXIF — même repère que CGImageSource/Vision."""
     return cv2.imread(path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
 
 
-def build_variants(path: str, bgr: np.ndarray, orient: str = "text") -> list[Variant]:
-    """Détecte, dédoublonne, filtre et oriente les crops candidats.
+def build_variants(path: str, bgr: np.ndarray, orient: str = "text",
+                   min_area: float = MIN_QUAD_AREA) -> list[Variant]:
+    """Détecte, filtre, dédoublonne et oriente les crops candidats.
 
-    Les quads de segmentation document passent en premier : à centre égal, le
-    dédoublonnage garde le premier vu, et le modèle de segmentation cadre mieux
-    la carte que le détecteur de rectangles (mesuré : l'ordre inverse coûtait
-    deux photos au banc d'essai).
+    À forme comparable, les quads de segmentation document passent en premier :
+    le dédoublonnage garde le premier vu, et le modèle de segmentation cadre
+    mieux la carte que le détecteur de rectangles (mesuré : l'ordre inverse
+    coûtait deux photos au banc d'essai). Ce n'est qu'une priorité par défaut :
+    un quadrilatère franchement mieux formé passe devant (voir `_side_balance`).
+
+    Le filtre de surface vient avant tout le reste : c'est le nombre de crops,
+    et non le modèle, qui décide du temps de traitement d'une photo — chacun
+    coûte un redressement, une passe d'OCR et un embedding.
     """
     quads = [(f"doc{i}", q) for i, q in enumerate(detect_document(path))]
     quads += [(f"rect{i}", q) for i, q in enumerate(detect_rectangles(path))]
+    quads = [(n, q) for n, q in quads if _area_fraction(q, bgr.shape) >= min_area]
+
+    # Le dédoublonnage garde le premier quad de chaque groupe : autant que ce
+    # soit le mieux formé. Le tri est par paliers, et stable, donc l'ordre
+    # « document d'abord » reste la règle entre quads de qualité comparable —
+    # seul un quadrilatère franchement mieux formé double la priorité du
+    # détecteur. Mesuré sur Diamat : le bon quad (côtés opposés à 0,98) était
+    # jeté au profit d'un quad dégénéré (0,68) que le détecteur avait rendu
+    # avant lui.
+    quads.sort(key=lambda nq: round(_side_balance(nq[1]) / SHAPE_BUCKET), reverse=True)
 
     max_side = max(bgr.shape[:2])
     kept: list[tuple[str, np.ndarray]] = []
@@ -166,11 +236,18 @@ def identify_photo(path: str, bgr: np.ndarray, encoder, index,
                    k: int = 5, orient: str = "text"):
     """Chaîne complète pour une photo mono-carte.
 
-    Retourne (label du crop retenu, hits). La recherche descend à 10 candidats
-    minimum pour que la marge de nom (classify_confidence) trouve un candidat
-    d'un nom différent même quand le top est saturé de réimpressions.
+    Retourne (label du crop retenu, hits). La recherche descend à 20 candidats
+    minimum pour deux raisons : que la marge de nom (classify_confidence) trouve
+    un candidat d'un nom différent même quand le top est saturé de réimpressions,
+    et que la lecture du numéro imprimé ait de quoi trancher.
+
+    `match_edition` ne réordonne que ce que la recherche lui donne : une carte
+    hors de cette fenêtre est perdue même si son numéro est parfaitement lisible.
+    Mesuré sur le banc : Hariyama 113/193 sortait au rang 12, et passer la
+    profondeur de 10 à 15 le récupère. 20 laisse de la marge, sans régression
+    jusqu'à 30, pour 1,6 ms de recherche.
     """
-    depth = max(k, 10)
+    depth = max(k, 20)
     variants = build_variants(path, bgr, orient=orient)
     results = []
     if variants:
@@ -235,20 +312,29 @@ def refine_with_band(variant: Variant, hits, index):
 
     N'appeler que sur un crop de carte (pas la photo entière) : le bandeau
     n'a un sens que si la géométrie est déjà redressée.
+
+    Deux passes d'OCR en cascade (voir `src/edition.py`) : la rapide tranche
+    quatre bandeaux sur cinq pour un cinquième du coût, la précise ne sert que
+    de repli. Le verdict « hors_index » n'est prononcé que sur la passe précise :
+    déclarer une carte absente de la base sur une lecture rapide serait affirmer
+    beaucoup à partir du mode le moins fiable.
     """
     from src.edition import known_pair, match_edition, read_number_pairs
 
     if variant.label == "photo entière":
         return hits, None
-    pairs = read_number_pairs(variant.bgr)
-    if not pairs:
-        return hits, None
 
+    card_bgr = variant.bgr
+    pairs = read_number_pairs(card_bgr, fast=True)
     match = match_edition(hits, pairs)
+    if match is None:
+        pairs = read_number_pairs(card_bgr)
+        match = match_edition(hits, pairs)
+
     if match is not None:
         i, _ = match
         reordered = [hits[i]] + hits[:i] + hits[i + 1:]
         return reordered, "ocr"
-    if not known_pair(index, pairs):
+    if pairs and not known_pair(index, pairs):
         return hits, "hors_index"
     return hits, None

@@ -78,13 +78,15 @@ def main() -> int:
     CROP_DIR.mkdir(parents=True, exist_ok=True)
 
     top1 = top5 = 0
-    absent = 0
+    no_answer: list[tuple[str, dict]] = []
     for rel_path, info in truth.items():
         expected = info["card_id"]
         if expected is None:
-            # Carte absente de l'index : aucun modèle ne peut la trouver. On la
-            # compte à part plutôt que de la faire passer pour un échec.
-            absent += 1
+            # Aucune réponse juste n'existe : carte hors index, ou pas de carte
+            # du tout. Ces photos ne comptent pas dans le top-1, mais elles sont
+            # passées dans la chaîne à part (voir plus bas) — c'est là qu'on
+            # vérifie que le pipeline se tait au lieu d'inventer.
+            no_answer.append((rel_path, info))
             continue
         bgr = load_bgr(str(PROJECT_ROOT / rel_path))
         if bgr is None:
@@ -171,11 +173,42 @@ def main() -> int:
                 f"{hit.card['set_name'][:26]:<27}{mark}"
             )
 
-    n = len(truth) - absent
+    n = len(truth) - len(no_answer)
     mode = f"détecteur {args.detector}"
     print(f"\n{mode} — top-1 {top1}/{n}   top-{args.top_k} {top5}/{n}")
-    print(f"({absent} cartes absentes de l'index, non comptées)")
-    print(f"crops écrits dans {CROP_DIR}")
+
+    # Photos sans réponse juste. Le seul verdict acceptable est un aveu
+    # d'ignorance : « incertain », ou « hors index » quand le numéro imprimé a
+    # été lu proprement sans correspondre à rien. Une attribution ferme est un
+    # faux positif — le pire résultat possible pour l'utilisateur, qui n'a aucun
+    # moyen de savoir que la réponse est inventée.
+    if no_answer and args.detector == "pipeline":
+        print(f"\n--- {len(no_answer)} photos sans réponse juste possible ---")
+        refused = 0
+        for rel_path, info in no_answer:
+            bgr = load_bgr(str(PROJECT_ROOT / rel_path))
+            if bgr is None:
+                print(f"illisible : {rel_path}")
+                continue
+            result = identify(
+                str(PROJECT_ROOT / rel_path), bgr, encoder, index, k=args.top_k
+            )
+            verdict = "hors index" if result.out_of_index else result.confidence.level
+            ok = result.out_of_index or result.confidence.level == "incertain"
+            refused += ok
+            print(
+                f"\n{Path(rel_path).name}  {info['fr']}  [{result.crop_label}]"
+                f"  -> {verdict} {'(correct : rien affirmé)' if ok else '(FAUX POSITIF)'}"
+            )
+            print(
+                f"   plus proche : {result.card['name']} "
+                f"({result.card['set_name']} {result.card['number']})"
+                f"   marges : édition {result.confidence.margin_id:.4f} · "
+                f"nom {result.confidence.margin_name:.4f}"
+            )
+        print(f"\nrefus corrects : {refused}/{len(no_answer)}")
+
+    print(f"\ncrops écrits dans {CROP_DIR}")
     return 0
 
 

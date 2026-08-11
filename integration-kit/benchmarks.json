@@ -1,14 +1,14 @@
 {
   "_comment": "Mesures de référence pour comparer une implémentation iOS. Voir AGENTS.md §8 et §9.",
   "materiel": "MacBook Pro M3 Pro, macOS 26.5 — sauf section iphone_13_pro",
-  "date": "2026-08-06",
+  "date": "2026-08-11",
   "modele": "CardEncoder.mlpackage (MobileCLIP2-S2, fp16, entrée 256x256)",
   "index": {
     "cartes": 20394,
     "dimensions": 512,
     "dtype": "float16"
   },
-  "methode": "moyenne sur 10 à 50 itérations après préchauffage ; images issues de sample/",
+  "methode": "moyenne sur 10 à 50 itérations après préchauffage ; images issues de sample/. Le profil par photo vient de ml/scripts/profile_pipeline.py sur les 32 photos du banc.",
   "embedding_par_unite_de_calcul_ms": {
     "cpuAndNeuralEngine": 3.3,
     "all": 5.7,
@@ -28,30 +28,34 @@
     "embedding_neural_engine": 3.3,
     "recherche_20394_vecteurs": 0.5,
     "ocr_orientation": 16.1,
-    "ocr_bandeau": 59.6
+    "ocr_bandeau_accurate": 59.6,
+    "ocr_bandeau_fast_x2": 12.0,
+    "ocr_bandeau_cascade_moyenne": 24.0
   },
   "bout_en_bout_depuis_image_720p_ms": {
-    "identification_complete": 96.0,
+    "_comment": "Un seul crop. Le total avec bandeau est déduit des étapes, la cascade coûtant 24 ms au lieu de 59,6.",
+    "identification_complete": 60.0,
+    "identification_complete_avant_cascade": 96.0,
     "identification_sans_ocr_bandeau": 36.5
   },
   "repartition_du_cout": {
-    "modele_embedding_pct": 3,
-    "ocr_vision_pct": 79,
-    "detection_pct": 13,
-    "reste_pct": 5,
-    "consequence": "optimiser le modèle n'apporte rien ; c'est la fréquence d'appel des OCR qui décide"
+    "_comment": "Pour une identification à un seul crop depuis une image 720p. Sur une photo entière, voir profil_par_photo_12mpx_ms : les deux OCR y pèsent 34 %.",
+    "modele_embedding_pct": 5,
+    "ocr_vision_pct": 66,
+    "consequence": "optimiser le modèle n'apporte rien ; ce sont le nombre de crops et la fréquence des OCR qui décident"
   },
   "budget_video_30fps_ms": {
     "budget_par_image": 33.3,
     "par_image_detection_seule_720p": 12.7,
     "a_l_apparition_d_une_carte": 36.5,
-    "une_fois_en_tache_de_fond_ocr_bandeau": 59.6,
+    "une_fois_en_tache_de_fond_ocr_bandeau": 24.0,
     "carte_deja_identifiee_et_suivie": 0.0
   },
   "a_mesurer_sur_iphone": [
     "impact thermique et throttling sur un flux vidéo prolongé",
     "consommation batterie en scan continu",
-    "coût de Vision sur un flux vidéo continu plutôt que sur photo isolée"
+    "coût de Vision sur un flux vidéo continu plutôt que sur photo isolée",
+    "gain réel du filtre de surface sur appareil : mesuré -37 % sur Mac, à confirmer"
   ],
   "iphone_13_pro": {
     "_comment": "Portage Swift (expo-card-encoder), photos 1080x1920 du flux vidéo, coût PAR APPEL. Module compilé -O : en -Onone les boucles pixel coûtent 100x plus.",
@@ -66,10 +70,32 @@
       "ocr_bandeau": 65.0
     },
     "crops_par_photo": {
-      "_comment": "Chaque étape par crop est payée autant de fois. C'est le vrai poste de coût, pas le modèle.",
-      "photo_12mpx": 15,
-      "photo_1080p": 13
+      "_comment": "Après le filtre de surface de AGENTS.md §2. Chaque étape par crop est payée autant de fois — c'est le vrai poste de coût, pas le modèle. Avant le filtre : 15 et 13.",
+      "photo_12mpx": 2.4,
+      "photo_12mpx_max": 7,
+      "avant_filtre_de_surface": 15
     },
     "piege_build": "SWIFT_OPTIMIZATION_LEVEL=-O obligatoire, même en Debug : filtre de variance 124 ms/crop et rotation 180° 114 ms/crop en -Onone, contre <1 ms optimisés. Vision, Core ML et Accelerate sont insensibles (frameworks précompilés)."
+  },
+  "profil_par_photo_12mpx_ms": {
+    "_comment": "Profil d'une PHOTO entière et non d'une identification à un crop, mesuré sur les 32 photos du banc, Mac M3 Pro, encodeur Core ML. Le decodage_photo n'existe pas dans l'app : le banc part d'un JPEG sur disque.",
+    "total": 159.0,
+    "total_avant_optimisations": 287.0,
+    "embedding": 33.1,
+    "decodage_photo": 32.0,
+    "orientation_dont_ocr": 27.2,
+    "ocr_bandeau": 26.3,
+    "detection_rectangles": 17.0,
+    "detection_document": 13.3,
+    "recherche": 1.7,
+    "redressement": 1.4,
+    "crops_par_photo": 2.4,
+    "crops_par_photo_max": 7
+  },
+  "precision": {
+    "top1": "31/31",
+    "top5": "31/31",
+    "photos": 32,
+    "_comment": "Deux collections, deux photographes ; la seconde entièrement en paysage. La 32e photo est un dos de carte : la chaîne répond 'incertain', ce qui est la bonne réponse."
   }
 }

@@ -6,14 +6,21 @@ confond certains caractères (7↔1, 2↔), O↔0...), mais l'espace des valeurs
 valides est fermé : on ne lit pas un nombre, on cherche lequel des candidats
 du top-k correspond le mieux à ce qui est lu.
 
-Même API que l'app iOS (`VNRecognizeTextRequest` en mode accurate, sur un crop
-de bandeau minuscule — coût ~50 ms, une fois par carte).
+Même API que l'app iOS (`VNRecognizeTextRequest`, sur un crop de bandeau
+minuscule, une fois par carte).
+
+La lecture se fait en deux temps, mesuré sur le banc d'essai : le mode `fast`
+sur un bandeau agrandi ×2 coûte 12 ms et tranche 16 photos sur 21, le mode
+`accurate` coûte 51 ms et en tranche 17. Les deux ne se contredisent jamais —
+le mode rapide lit le bon numéro ou ne lit rien — donc n'appeler `accurate` que
+lorsque le rapide n'a rien donné coûte 24 ms en moyenne sans rien perdre.
 """
 
 from __future__ import annotations
 
 import re
 
+import cv2
 import numpy as np
 import Vision
 
@@ -21,6 +28,11 @@ from src.orient import _cgimage_from_bgr
 
 # Fraction basse de la carte contenant la ligne numéro/set.
 BAND_FRACTION = 0.14
+
+# Agrandissement du bandeau avant la passe rapide. Le mode `fast` de Vision
+# décroche sur les petits caractères : à l'échelle 1 il ne lit que 13 bandeaux
+# sur 21, à l'échelle 2 il en lit 16, pour 3 ms de plus.
+FAST_UPSCALE = 2.0
 
 # Confusions OCR observées sur le banc, appliquées avant extraction des motifs.
 CONFUSIONS = str.maketrans({
@@ -37,10 +49,13 @@ CONFUSIONS = str.maketrans({
 NUMBER_PATTERN = re.compile(r"(\d{1,3})\s*/\s*(\d{1,3})")
 
 
-def _ocr_strings(bgr: np.ndarray) -> list[str]:
+def _ocr_strings(bgr: np.ndarray, fast: bool = False) -> list[str]:
+    if fast:
+        bgr = cv2.resize(bgr, None, fx=FAST_UPSCALE, fy=FAST_UPSCALE,
+                         interpolation=cv2.INTER_CUBIC)
     cgimage = _cgimage_from_bgr(bgr)
     request = Vision.VNRecognizeTextRequest.alloc().init()
-    request.setRecognitionLevel_(0)  # accurate : le bandeau est petit et fin
+    request.setRecognitionLevel_(1 if fast else 0)
     request.setUsesLanguageCorrection_(False)
     handler = Vision.VNImageRequestHandler.alloc().initWithCGImage_options_(cgimage, None)
     ok, _ = handler.performRequests_error_([request], None)
@@ -54,12 +69,12 @@ def _ocr_strings(bgr: np.ndarray) -> list[str]:
     return out
 
 
-def read_number_pairs(card_bgr: np.ndarray) -> list[tuple[str, str]]:
+def read_number_pairs(card_bgr: np.ndarray, fast: bool = False) -> list[tuple[str, str]]:
     """Lit les motifs « numéro/total » du bandeau bas d'une carte redressée."""
     height = card_bgr.shape[0]
     band = card_bgr[int((1 - BAND_FRACTION) * height):, :]
     pairs = []
-    for raw in _ocr_strings(band):
+    for raw in _ocr_strings(band, fast=fast):
         cleaned = raw.translate(CONFUSIONS)
         pairs.extend(NUMBER_PATTERN.findall(cleaned))
     return pairs

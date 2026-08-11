@@ -22,6 +22,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.encoder import REGISTRY, load_encoder  # noqa: E402
 from src.pipeline import (  # noqa: E402
+    MIN_MULTI_QUAD_AREA,
     build_variants,
     classify_confidence,
     identify,
@@ -91,7 +92,7 @@ def main() -> int:
                     )
             continue
 
-        variants = build_variants(str(image_path), bgr)
+        variants = build_variants(str(image_path), bgr, min_area=MIN_MULTI_QUAD_AREA)
         if not variants:
             print("  aucune carte détectée")
             continue

@@ -1,5 +1,5 @@
 {
-  "_comment": "Vérité terrain des photos réelles, lue sur les cartes (nom FR + numéro + code de set imprimé). L'index de référence est en anglais. card_id null = carte absente de l'index, non identifiable par construction.",
+  "_comment": "Vérité terrain des photos réelles, lue sur les cartes (nom FR + numéro + code de set imprimé). L'index de référence est en anglais. card_id null = aucune réponse juste possible : soit la carte est absente de l'index (condition absent_index), soit il n'y a pas de carte à identifier (condition dos). Ces photos ne comptent pas dans le top-1 mais sont bel et bien passées dans la chaîne : on y vérifie que le verdict reste 'incertain' ou 'hors index', jamais une attribution ferme.",
   "photos": {
     "sample/IMG_5017.jpeg": {"card_id": "me5-36", "fr": "Funécire 036/084 PBL", "conditions": ["pivote", "reflet", "fond"]},
     "sample/IMG_5018.jpeg": {"card_id": "me5-22", "fr": "Superdofin 022/084 PBL", "conditions": ["pivote", "incline", "loin", "fond"]},
@@ -8,10 +8,10 @@
     "sample/IMG_5021.jpeg": {"card_id": "me5-76", "fr": "Carrière Fossile 076/084 PBL", "conditions": ["pivote", "masque", "contrejour", "fond"]},
     "sample/IMG_5022.jpeg": {"card_id": "me5-14", "fr": "Poissoroy 014/084 PBL", "conditions": ["pivote", "proche", "masque"]},
 
-    "sample/IMG_5023.jpeg": {"card_id": null, "fr": "Méga-Dracaufeu X ex 023 MEP", "conditions": ["fullart", "sleeve", "absent_index"]},
+    "sample/IMG_5023.jpeg": {"card_id": "mep-23", "fr": "Méga-Dracaufeu X ex 023 MEP", "conditions": ["fullart", "sleeve"]},
     "sample/IMG_5024.jpeg": {"card_id": "sv2-209", "fr": "Cryodo 209/193 PAL", "conditions": ["illustrationrare", "sleeve"]},
     "sample/IMG_5025.jpeg": {"card_id": "sv2-248", "fr": "Ordres du Boss 248/193 PAL", "conditions": ["fullart", "sleeve"]},
-    "sample/IMG_5026.jpeg": {"card_id": null, "fr": "Plumeline ex 024 MEP", "conditions": ["fullart", "sleeve", "absent_index"]},
+    "sample/IMG_5026.jpeg": {"card_id": "mep-24", "fr": "Plumeline ex 024 MEP", "conditions": ["fullart", "sleeve"]},
     "sample/IMG_5027.jpeg": {"card_id": "sv6-185", "fr": "Verpom 185/167 TWM", "conditions": ["illustrationrare", "sleeve"]},
     "sample/IMG_5028.jpeg": {"card_id": "me1-152", "fr": "Cadoizo 152/132 MEG", "conditions": ["illustrationrare", "fond", "masque"]},
     "sample/IMG_5030.jpeg": {"card_id": "me1-36", "fr": "Méga-Blizzaroi ex 036/132 MEG", "conditions": ["fullart", "holo", "sleeve", "fond"]},
@@ -20,10 +20,22 @@
     "sample/IMG_5032.jpeg": {"card_id": "me5-67", "fr": "Piclairon 067/084 PBL", "conditions": ["incline", "fond"]},
     "sample/IMG_5033.jpeg": {"card_id": "me5-23", "fr": "Dynavolt 023/084 PBL", "conditions": ["incline", "fond"]},
     "sample/IMG_5034.jpeg": {"card_id": "me5-72", "fr": "Fossile Armure Antique 072/084 PBL", "conditions": ["incline", "pivote", "fond"]},
-    "sample/IMG_5035.jpeg": {"card_id": null, "fr": "Énergie Eau de base 003 MEG", "conditions": ["pivote", "incline", "absent_index", "energie"]},
+    "sample/IMG_5035.jpeg": {"card_id": "mee-3", "fr": "Énergie Eau de base 003 MEG", "conditions": ["pivote", "incline", "energie"]},
     "sample/IMG_5036.jpeg": {"card_id": "me5-91", "fr": "Sinistrail 091/084 PBL secrète", "conditions": ["incline", "illustrationrare", "fond"]},
     "sample/IMG_5037.jpeg": {"card_id": "me5-59", "fr": "Yuyu 059/084 PBL", "conditions": ["incline", "reflet", "fond"]},
-    "sample/IMG_5038.jpeg": {"card_id": "me5-43", "fr": "Colossinge 043/084 PBL", "conditions": ["incline", "fond"]}
+    "sample/IMG_5038.jpeg": {"card_id": "me5-43", "fr": "Colossinge 043/084 PBL", "conditions": ["incline", "fond"]},
+
+    "sample/Cryodo-059:193.jpeg": {"card_id": "sv2-59", "fr": "Cryodo 059/193 PAL", "conditions": ["couche", "fond"]},
+    "sample/Cuencia-171:193.jpeg": {"card_id": "sv2-171", "fr": "Cuencia 171/193 PAL", "conditions": ["couche", "main", "dresseur", "loin", "fond"]},
+    "sample/Diamat-139:193.jpeg": {"card_id": "sv2-139", "fr": "Diamat 139/193 PAL", "conditions": ["couche", "fond"]},
+    "sample/Electrode-067:193.jpeg": {"card_id": "sv2-67", "fr": "Électrode 067/193 PAL", "conditions": ["couche", "fond"]},
+    "sample/Energie Invesrsion-192:193.jpeg": {"card_id": "sv2-192", "fr": "Énergie Inversion 192/193 PAL", "conditions": ["couche", "energie"]},
+    "sample/Famignol-168:193.jpeg": {"card_id": "sv2-168", "fr": "Famignol 168/193 PAL", "conditions": ["couche"]},
+    "sample/Hariyama-113:193.jpeg": {"card_id": "sv2-113", "fr": "Hariyama 113/193 PAL", "conditions": ["couche"]},
+    "sample/Makuhita-112:193.jpeg": {"card_id": "sv2-112", "fr": "Makuhita 112/193 PAL", "conditions": ["couche", "loin"]},
+    "sample/Pitrouille-077:182.jpeg": {"card_id": "sv4-77", "fr": "Pitrouille 077/182 PAR", "conditions": ["couche", "loin", "fond"]},
+    "sample/Quarternarc-118:193.jpeg": {"card_id": "sv2-118", "fr": "Quartermac 118/193 PAL", "conditions": ["couche", "fond"]},
+    "sample/Nothing.jpeg": {"card_id": null, "fr": "dos de carte — rien à identifier", "conditions": ["couche", "dos"]}
   },
   "_multi": {
     "sample/IMG_5029.jpeg": "plusieurs cartes étalées — sert à tester la détection multi-cartes, pas l'identification"

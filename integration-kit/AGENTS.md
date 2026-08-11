@@ -4,10 +4,12 @@ Ce kit identifie une carte Pokémon à partir d'une photo, **entièrement sur
 l'appareil**, sans réseau. Il contient le modèle, l'index des 20 512 cartes, et
 la logique de décision validée.
 
-> **Statut mesuré** : 18 identifications correctes sur 18 photos iPhone réelles
-> (cartes françaises, index anglais, conditions ordinaires : contre-jour,
-> pochette, fond chargé, cartes inclinées). Mesures faites sur Mac avec le
-> modèle Core ML exporté ici.
+> **Statut mesuré** : 31 identifications correctes sur 31 photos iPhone réelles,
+> issues de deux collections photographiées par deux personnes (cartes
+> françaises, index anglais, conditions ordinaires : contre-jour, pochette, fond
+> chargé, cartes inclinées, et un second lot entièrement en paysage). Une 32ᵉ
+> photo montre un dos de carte : la chaîne répond « incertain », ce qui est la
+> bonne réponse. Mesures faites sur Mac avec le modèle Core ML exporté ici.
 >
 > **Ça tourne maintenant sur iPhone.** Portage Swift intégré à une app Expo, mesuré
 > sur iPhone 13 Pro : voir §8. L'encodeur y fait **5,5 ms** sur le Neural Engine.
@@ -70,16 +72,42 @@ Lancer les **deux** détecteurs et fusionner leurs résultats. La segmentation
 document cadre mieux la carte ; le détecteur de rectangles rattrape les cas
 qu'elle rate.
 
-**Les candidats issus de la segmentation document doivent passer en premier** :
-au dédoublonnage (étape 2), le premier vu gagne, et l'ordre inverse a coûté
-deux photos sur le banc d'essai.
+**À forme comparable, les candidats issus de la segmentation document passent en
+premier** : au dédoublonnage (étape 2), le premier vu gagne, et l'ordre inverse a
+coûté deux photos sur le banc d'essai. Ce n'est qu'une priorité par défaut, que
+la qualité géométrique du quadrilatère peut renverser — voir étape 2.
 
 ### 2. Filtrage
 
-Trois filtres, dans cet ordre :
+Quatre filtres, dans cet ordre. **C'est ici que se joue le temps de traitement** :
+tout ce qui survit coûte un redressement, une passe d'OCR et un embedding, et
+`VNDetectRectanglesRequest` rend jusqu'à 8 observations dont la plupart sont des
+parasites (§8).
 
+- **Surface** : rejeter un quadrilatère couvrant moins de **2 %** de la photo,
+  avant même de redresser. Sur le banc, 4 des 6,3 quadrilatères par photo font
+  moins de 1 % de la surface, alors que le candidat finalement retenu n'est
+  jamais descendu sous 6,6 %. Ce seul filtre fait passer le nombre de crops de
+  10,2 à 2,4 par photo, soit **−37 % de temps de traitement**.
+  ⚠️ Filtre de **surface**, surtout pas de format : la perspective écrase le
+  rapport apparent d'une carte (0,66 à 0,94 mesuré sur les quadrilatères
+  gagnants, contre 63/88 = 0,72 à plat). Un filtre sur le rapport
+  largeur/hauteur écarte de vraies cartes.
+  ⚠️ Pour scanner un étalage de plusieurs cartes, descendre à **0,5 %** : une
+  carte parmi dix couvre forcément une petite fraction du cadre.
 - **Dédoublonnage par centre** : deux quadrilatères dont les centres sont
-  distants de moins de 5 % du grand côté de l'image visent la même carte.
+  distants de moins de 5 % du grand côté de l'image visent la même carte. Le
+  groupe est représenté par **le quadrilatère le mieux formé**, mesuré par
+  l'égalité de ses côtés opposés — `min(côté court / côté long)` sur les deux
+  paires de côtés opposés, 1 pour un rectangle, 0 pour un quadrilatère
+  dégénéré. Comparer par paliers de 0,10 et trancher les égalités par l'ordre
+  des détecteurs (segmentation d'abord).
+  Ce critère ne suppose rien du format de la carte : la perspective d'une photo
+  tenue à la main laisse les côtés opposés à peu près égaux, alors qu'un coin
+  mal placé effondre la mesure. Mesuré sur une photo du banc : les détecteurs
+  rendaient un quadrilatère parfait (0,98) et deux cassés (0,50 et 0,68), et
+  garder « le premier vu » retenait un cassé — crop tourné de 90°, bandeau
+  illisible, bonne espèce mais mauvaise édition.
 - **Variance** : rejeter un crop dont l'écart-type des niveaux de gris est
   `< 8`. Ça élimine le ciel, une dalle, une touche de clavier.
   ⚠️ Ne pas monter ce seuil. À 25 il éliminait une vraie carte à contre-jour
@@ -122,16 +150,34 @@ Similarité cosinus = produit scalaire, puisque tout est normalisé. Un produit
 matrice-vecteur `(20512 × 512) · (512)` via Accelerate suffit. Aucune
 bibliothèque vectorielle nécessaire.
 
-Descendre à **10 candidats** minimum : la marge de nom (§5) a besoin de trouver
-un candidat portant un nom différent, or le haut du classement est souvent
-saturé de réimpressions.
+Descendre à **20 candidats** minimum, pour deux raisons. La marge de nom (§5) a
+besoin de trouver un candidat portant un nom différent, or le haut du classement
+est souvent saturé de réimpressions. Et surtout, l'étape 7 ne réordonne que ce
+que la recherche lui donne : **une carte hors de cette fenêtre est perdue même si
+son numéro imprimé est parfaitement lisible.**
+
+⚠️ Ne pas garder l'ancienne valeur de 10. Une carte du banc sortait au rang 12,
+avec son « 113/193 » parfaitement net : la recherche la jetait avant que l'OCR
+puisse la sauver. 15 suffisait, 20 laisse de la marge, sans régression jusqu'à
+30 — la recherche coûte 1,6 ms.
 
 ### 7. Édition exacte
 
-OCR **précis** (`.accurate`) sur les **14 % inférieurs** du crop redressé, pour
-lire le motif « numéro/total » (ex. `043/084`).
+OCR sur les **14 % inférieurs** du crop redressé, pour lire le motif
+« numéro/total » (ex. `043/084`).
 
-Puis, parmi les 10 candidats : le total imprimé doit correspondre exactement
+**Deux passes en cascade, pas une.** L'OCR `.accurate` coûte 51 ms et reste le
+premier poste de la chaîne ; le mode `.fast` sur ce même bandeau **agrandi ×2**
+coûte 12 ms. Sur le banc, le rapide tranche 16 bandeaux sur 21 contre 17 pour le
+précis, et surtout **les deux ne se contredisent jamais** : le rapide lit le bon
+numéro, ou ne lit rien. D'où la règle — passe rapide d'abord, passe précise
+seulement si la rapide n'a désigné aucun candidat. Coût moyen 24 ms au lieu de
+51, sans rien perdre.
+
+L'agrandissement ×2 n'est pas optionnel : à l'échelle 1, le mode `.fast`
+décroche sur ces petits caractères et ne lit que 13 bandeaux sur 21.
+
+Puis, parmi les 20 candidats : le total imprimé doit correspondre exactement
 (c'est lui qui identifie le set), le numéro tolère **une** erreur de chiffre.
 Le candidat qui correspond est promu en tête.
 
@@ -141,9 +187,14 @@ prévisible sur ce bandeau : `O Q D → 0`, `I l | ) ] → 1`, `Z → 2`, `S →
 
 **Garde-fou hors index** : si un numéro est lu proprement mais qu'aucune carte
 de toute la base ne porte ce couple numéro/total, afficher « carte inconnue »
-plutôt qu'une attribution confiante. Trois cartes testées étaient dans ce cas ;
-depuis, les 60 promos MEP sont entrées dans l'index (kit-v4) et il ne reste que
-les 8 énergies MEE, dont aucune source publique n'a d'image.
+plutôt qu'une attribution confiante. Trois cartes du banc étaient dans ce cas ;
+elles ont depuis toutes rejoint l'index — les 60 promos MEP, puis les 8 énergies
+MEE — et sont aujourd'hui correctement identifiées. Le garde-fou reste
+indispensable pour tout ce qui sortira après ce kit.
+
+⚠️ Ne prononcer « hors index » que sur la **passe précise**. Déclarer une carte
+absente de la base sur une lecture rapide, c'est affirmer beaucoup à partir du
+mode le moins fiable.
 
 ---
 
@@ -345,9 +396,13 @@ Portage Swift, photos 1080×1920 issues du flux vidéo, par appel :
 | prétraitement géométrique | 1,2 ms | 1,0 ms |
 | **embedding (Neural Engine)** | **5,5 ms** | **4,1 ms** |
 | recherche sur 20 512 vecteurs | 1,9 ms | 0,6 ms |
-| OCR du bandeau | 65 ms | 60 ms |
+| OCR du bandeau (`.accurate`) | 65 ms | 60 ms |
 
 Le modèle tient donc largement la promesse du §9 sur du matériel réel.
+
+Ces coûts sont **par appel** et n'ont pas bougé : c'est le nombre d'appels qui a
+changé (voir plus bas). L'OCR du bandeau ne se paie désormais qu'une fois sur
+cinq, la passe rapide traitant le reste à 12 ms.
 
 ⚠️ **Compiler le portage en `-O`, même en Debug.** Le reste de l'app peut rester
 non optimisé, pas ce code. Les deux boucles pixel par pixel — le filtre de
@@ -357,12 +412,54 @@ d'un scan de 2,3 s, entièrement imputable à la configuration de build. Tout ce
 qui passe par Vision, Core ML ou Accelerate est insensible : ce sont des
 frameworks précompilés.
 
-⚠️ **Le nombre de crops est le vrai poste de coût, pas le modèle.** Une photo
-12 Mpx produit jusqu'à **15 hypothèses** (8 quadrilatères dédoublonnés, dont
-plusieurs à orientation indécise qui comptent double). Le « 96 ms de bout en
-bout » ci-dessous suppose une image 720p où les détecteurs trouvent bien moins de
-candidats. Instrumenter par appel et non en cumul, sans quoi les chiffres ne
-veulent rien dire.
+⚠️ **Le nombre de crops est le vrai poste de coût, pas le modèle.** Sans le
+filtre de surface du §2, une photo 12 Mpx produit jusqu'à **15 hypothèses**
+(8 quadrilatères dédoublonnés, dont plusieurs à orientation indécise qui comptent
+double), et chacune paie redressement, orientation et embedding. Avec le filtre :
+**2,4 en moyenne, 7 au pire**. Instrumenter par appel et non en cumul, sans quoi
+les chiffres ne veulent rien dire.
+
+### Le profil réel d'une photo
+
+Mesuré sur les 32 photos du banc, encodeur Core ML, Mac M3 Pro, photos 12 Mpx —
+c'est le profil d'une **photo entière**, pas d'une identification à un seul crop.
+Reproductible avec `ml/scripts/profile_pipeline.py`.
+
+| Étape | ms par photo | appels par photo |
+|---|---|---|
+| embedding | 33,1 | 1,0 (par lot de variantes) |
+| décodage de la photo | 32,0 | 1,0 |
+| orientation (dont OCR) | 27,2 | 1,9 |
+| OCR du bandeau | 26,3 | 1,25 |
+| détection rectangles | 17,0 | 1,0 |
+| détection document | 13,3 | 1,0 |
+| recherche | 1,7 | 1,0 |
+| redressement | 1,4 | 2,0 |
+| **total** | **159 ms** | |
+
+Trois choses à en retenir :
+
+- **Le point de départ était 287 ms.** Le filtre de surface en a retiré 37 %, la
+  cascade d'OCR du bandeau 8 % de plus, sans perdre une seule identification.
+- **La répartition « 79 % d'OCR » du kit précédent était vraie pour une
+  identification à un crop, pas pour une photo.** Sur une vraie photo, les deux
+  OCR pèsent 34 % — et le premier poste apparent, l'embedding, ne l'est que
+  parce qu'il était payé dix fois. Les deux ont la même cause : le nombre de
+  crops.
+- **Le décodage de la photo (32 ms) n'existe pas dans l'app.** C'est un artefact
+  du banc, qui part d'un JPEG sur disque ; une image de flux vidéo arrive déjà
+  décodée. À retrancher avant de comparer vos mesures aux nôtres.
+
+⚠️ **Ne pas réduire la photo d'entrée pour aller plus vite.** Testé : à 6 Mpx le
+décodage tombe de 38 à 11 ms mais le banc perd une carte, à 3 Mpx il en perd
+trois. Détecter sur une version réduite reste bon (§9) — ce qu'il ne faut pas
+réduire, c'est l'image dont on extrait le crop.
+
+⚠️ **Piège de coordonnées.** Si la détection lit le fichier et que le
+redressement travaille sur un tableau décodé séparément, les deux doivent avoir
+exactement la même résolution. En décalant les deux d'un facteur 2, le banc est
+tombé de 18/18 à 1/18 — **sans lever la moindre erreur**, les quadrilatères étant
+simplement appliqués dans le mauvais repère.
 
 ### Sur Mac M3 Pro
 
@@ -396,29 +493,36 @@ Laisser Core ML choisir seul (`.all`) coûte presque le double :
 | **embedding (Neural Engine)** | **3,3 ms** |
 | recherche sur 20 512 vecteurs | 0,5 ms |
 | OCR d'orientation | 16,1 ms |
-| OCR du bandeau | 59,6 ms |
+| OCR du bandeau — `.accurate` | 59,6 ms |
+| OCR du bandeau — `.fast`, agrandi ×2 | 12,0 ms |
+| OCR du bandeau — cascade, en moyenne | 24,0 ms |
 
 ### De bout en bout, depuis une image 720p
 
 | | Coût |
 |---|---|
-| identification complète, OCR du bandeau compris | **96 ms** |
+| identification complète, OCR du bandeau compris | **~60 ms** (96 ms avant la cascade) |
 | identification sans OCR du bandeau | **36,5 ms** |
 
-La répartition est le fait marquant : **le modèle pèse 3 % du total, les deux
-OCR en pèsent 79 %.** C'est ce qui dicte l'architecture du §9.
+Le total avec bandeau est déduit du tableau ci-dessus, la cascade coûtant 24 ms
+en moyenne au lieu de 59,6. Le profil mesuré de bout en bout, sur de vraies
+photos plutôt que sur une image 720p à un seul crop, est plus haut dans ce §8.
+
+La répartition reste le fait marquant : **le modèle pèse 5 % du total, les deux
+OCR en pèsent les deux tiers.** C'est ce qui dicte l'architecture du §9.
 
 ---
 
 ## 9. Flux vidéo en direct
 
 Le modèle convient largement : **3,3 ms par image sur le Neural Engine**, soit
-306 images/s. Il représente 3 % du coût d'une identification. Le poste dominant
-est l'OCR de Vision (79 %).
+306 images/s. Il représente 5 % du coût d'une identification. Le poste dominant
+reste l'OCR de Vision (les deux tiers).
 
 > ⚠️ **Ne pas passer à un modèle plus léger.** MobileCLIP2-S0 ferait gagner
-> environ 2 ms sur 96 et coûterait de la précision. Optimiser l'embedding, c'est
-> optimiser ce qui ne limite pas.
+> environ 2 ms sur 60 et coûterait de la précision. Optimiser l'embedding, c'est
+> optimiser ce qui ne limite pas. Ce qui limite, c'est le nombre de crops (§2) et
+> la fréquence des OCR.
 
 ### Répartition du travail
 
@@ -429,7 +533,7 @@ image.**
 |---|---|---|
 | chaque image | détection du quadrilatère + suivi | 12,7 ms |
 | à l'apparition d'une carte | redressement, orientation, embedding, recherche | ~36 ms |
-| une fois, en tâche de fond | OCR du bandeau (confirme l'édition) | ~60 ms |
+| une fois, en tâche de fond | OCR du bandeau (confirme l'édition) | ~24 ms |
 | carte déjà identifiée et suivie | rien | 0 ms |
 
 À 30 images/s (33 ms par image), seule la détection tourne en continu : elle
@@ -483,6 +587,13 @@ lequel c'est.
 
 C'est le pendant positif du garde-fou « hors index » du §2 — la même table,
 utilisée pour trouver plutôt que pour disqualifier.
+
+**Depuis, la fenêtre de recherche est passée de 10 à 20 candidats** (§6), ce qui
+règle la variante bénigne du même problème : une carte tombée juste sous la
+barre. Un Hariyama sortait au rang 12 avec son numéro parfaitement lisible.
+Élargir la fenêtre rend ce rattrapage moins souvent nécessaire, mais ne le
+remplace pas : le cas de l'Inkay, mené de 0,089 par un candidat sans rapport,
+n'est pas une affaire de deux ou trois rangs.
 
 ⚠️ **Ce rattrapage ne couvre que 38 % des cartes.** 63 % des couples
 numéro/total sont uniques, mais ils ne concernent que 7833 cartes sur 20512 —

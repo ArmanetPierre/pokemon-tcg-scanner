@@ -6,11 +6,13 @@ set it was printed in, and how much that answer can be trusted.
 
 The rest of this repository is in French; this file is the English way in.
 
-**Status.** 18 correct identifications out of 18 real iPhone photographs on the
-original bench (French cards against an English index, in ordinary conditions —
-backlight, sleeves, cluttered backgrounds, tilted cards), measured on a Mac. It
-now also runs on an iPhone, inside a real app, where the encoder takes **5.5 ms**
-on the Neural Engine.
+**Status.** 31 correct identifications out of 31 real iPhone photographs, across
+two collections photographed by two people (French cards against an English
+index, in ordinary conditions — backlight, sleeves, cluttered backgrounds, tilted
+cards, and a second batch shot entirely in landscape), measured on a Mac. A 32nd
+photograph shows the back of a card: the chain answers "uncertain", which is the
+correct answer. It now also runs on an iPhone, inside a real app, where the
+encoder takes **5.5 ms** on the Neural Engine.
 
 ---
 
@@ -231,8 +233,11 @@ single card name — several printings of one artwork across different sets. A
 tight margin usually means "right card, unsure which printing", which is worth
 telling someone, and is not the same as not knowing.
 
-These thresholds are calibrated on 18 photographs from one player. They hold on
-that set with no over-claiming, but deserve re-confirming on a wider sample.
+These thresholds were calibrated on 18 photographs from one player, and have
+since held unchanged on a second player's 11 photographs plus one photograph of a
+card back — no over-claiming on either, and the card back correctly lands in
+`uncertain`. 32 photographs is still a small sample: two collections, one phone
+model, no organised-play conditions.
 
 ---
 
@@ -246,25 +251,41 @@ that set with no over-claiming, but deserve re-confirming on a wider sample.
 | geometric preprocessing | 1.2 ms | 1.0 ms |
 | **embedding (Neural Engine)** | **5.5 ms** | **4.1 ms** |
 | search over 20 512 vectors | 1.9 ms | 0.6 ms |
-| collector-number OCR | 65 ms | 60 ms |
+| collector-number OCR (`.accurate`) | 65 ms | 60 ms |
 
-The striking part is the split: **the model is about 3 % of an identification,
-and Vision's two OCR passes are about 79 %.** Reaching for a lighter model
+Per call. **What decides the cost of a photograph is how many times each of these
+runs**, and the answer used to be "far too many": the rectangle detector returns
+up to 8 observations, most of them tiny artefacts, and every one of them was paid
+for in rectification, orientation OCR and embedding. Rejecting any quadrilateral
+covering less than 2 % of the frame — before rectifying anything — takes a
+photograph from 10.2 crops to 2.4. A second pass over the collector-number OCR
+(the `.fast` recogniser on a 2× enlarged strip first, `.accurate` only when it
+comes back empty) takes that stage from 60 ms to 24 ms on average. Together:
+**287 ms to 159 ms per 12-megapixel photograph, with no identification lost**,
+measured over the 32-photograph bench with `ml/scripts/profile_pipeline.py`.
+
+The split on what remains: the model is about 5 % of an identification, and
+Vision's two OCR passes about two thirds. Reaching for a lighter model still
 optimises the thing that is not the constraint. What matters for a live video
 loop is how often each stage runs — detection every frame, identification once
 per card, the collector-number read once in the background. `AGENTS.md` §9 has
 the budget.
 
-Two things that are easy to get wrong and expensive to diagnose:
+Three things that are easy to get wrong and expensive to diagnose:
 
 - **Compile the port with `-O`, even in Debug.** Framework work is unaffected,
   but hand-written pixel loops are not: measured at 124 ms and 114 ms per crop
   unoptimised against under a millisecond optimised — 1.8 seconds of a 2.3
   second scan, purely an artefact of the build configuration.
-- **Instrument per call, not cumulatively.** A 12-megapixel photograph produces
-  up to 15 crop hypotheses, so every per-stage total is a sum over them. Without
-  the call count the numbers cannot be compared between two scans, let alone
-  against this table.
+- **Instrument per call, not cumulatively.** A per-stage total is a sum over
+  every crop hypothesis — up to 15 of them before the area filter, up to 7
+  after. Without the call count the numbers cannot be compared between two
+  scans, let alone against this table.
+- **Detection and rectification must see the same image.** Detection reads the
+  file and returns quadrilaterals in its pixel coordinates; rectification works
+  on a decoded array. Decoding that array at half resolution while the detectors
+  still read the full-resolution file took the bench from 18/18 to 1/18 — and
+  raised no error at all, the quadrilaterals simply landing in the wrong frame.
 
 ---
 
