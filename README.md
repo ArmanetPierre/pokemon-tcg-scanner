@@ -15,32 +15,33 @@ fausse** sur 29, aucun des 7 négatifs n'étant affirmé. La configuration est
 réglée contre les faux positifs : mieux vaut demander une autre photo
 qu'annoncer une carte fausse avec assurance. Le banc annonçait 31/31 jusqu'à ce
 qu'un troisième lot — cartes anciennes, cadrages ratés, et sept photos sans
-bonne réponse possible — le ramène à cette valeur. Ce lot a aussi produit
+bonne réponse possible — le ramène à cette valeur. Ce lot a d'abord produit
 **trois attributions fermes et fausses**, dont une sur un flou que personne ne
-peut identifier : voir `docs/audit-ml.md` §0. Les photos viennent de trois
+peut identifier ; il en reste une, sur une carte de 2006. L'histoire complète
+est dans `docs/audit-ml.md` §0. Les photos viennent de trois
 collections photographiées par plusieurs personnes (cartes françaises, index
 anglais, conditions ordinaires — contre-jour, pochette, fond chargé, cartes
 inclinées, un lot entièrement en paysage, et des cartes en classeur). Sept
 autres photos n'ont **aucune bonne réponse possible** : dos de carte, cartes
 One Piece, carte coréenne, pochon porte-cartes, flou illisible. La chaîne se
-tait correctement sur six d'entre elles. Mesuré sur Mac.
+tait correctement sur **les sept**. Mesuré sur Mac.
 
 **Ce que chaque étage apporte**, mesuré par ablation sur ce même banc — c'est la
 chaîne qui identifie, pas le modèle seul :
 
 | Configuration | Top-1 |
 |---|---|
-| photo entière, sans détection ni orientation | 5/39 (13 %, IC95 6-27) |
-| + détection, filtrage, orientation → **similarité seule** | 29/39 (74 %, IC95 59-85) |
-| + lecture du numéro imprimé → **chaîne complète** | 35/39 (90 %, IC95 76-96) |
+| photo entière, sans détection ni orientation | 8/39 (21 %, IC95 11-36) |
+| + détection, filtrage, orientation → **similarité seule** | 28/39 (72 %, IC95 56-83) |
+| + lecture du numéro imprimé → **chaîne complète** | 34/39 (87 %, IC95 73-94) |
 
-Le cadrage vaut 24 identifications, l'embedding ne travaille que sur ce qu'on
+Le cadrage vaut 20 identifications, l'embedding ne travaille que sur ce qu'on
 lui donne, et la lecture du numéro imprimé en rattrape 6 de plus. Reproductible
 par `scripts/evaluate_real.py --ablation`.
 
-Le rapport entre les étages tient sur le banc élargi : la similarité seule
-plafonne à 74 %, et l'OCR du bandeau en récupère 16 points. Chercher un meilleur
-encodeur, c'est optimiser l'étage qui pèse le moins.
+Chercher un meilleur encodeur, c'est optimiser l'étage qui pèse le moins : la
+similarité seule plafonne à 72 %, et l'OCR du bandeau récupère 15 points. Sur
+les 29 affirmations fermes de la chaîne, **25 viennent du numéro imprimé lu**.
 
 **Ça tourne sur iPhone.** Le portage Swift est intégré à une app Expo,
 [hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), comme

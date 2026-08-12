@@ -94,9 +94,34 @@ derrière la carte qui est dans le plan de mise au point.
 **Ce que ça dit du système.** Le refus repose sur une seule grandeur, la marge,
 qui mesure « deux candidats sont-ils proches ? » et non « est-ce que je regarde
 une carte ? ». Ce sont deux questions différentes, et aucun seuil sur la
-première ne répond à la seconde. Aucun seuil de production n'a été modifié : sept
-négatifs ne justifient pas d'amputer 71 % de la couverture. Le chantier qui suit
-est **B2**.
+première ne répond à la seconde. Le chantier de fond reste **B2**.
+
+### Ce qui a été livré en réponse (12 août 2026)
+
+Sur décision produit — « évitons les faux positifs, on pourra demander une photo
+mieux cadrée » — trois changements, chacun mesuré :
+
+1. **Le repli photo-entière ne peut plus rien affirmer.** Il ne produit aucune
+   identification correcte sur les 46 photos, et exactement un faux positif
+   ferme : le plafonner ne coûte rien.
+2. **L'enrôlement centroïde est embarqué** (chantier D). À sécurité égale, il
+   fait passer les verdicts fermes issus de la marge de 6/21 à 16/21.
+3. **Seuils relevés à 0,045 / 0,06**, contre 0,028 que donne la calibration.
+   L'écart est un **choix de politique assumé**, pas une valeur calibrée : une
+   borne établie sur quatre négatifs n'a aucune marge de sécurité.
+
+Résultat : **34/39 en top-1, 29 affirmations fermes dont 28 justes, et 7/7
+négatifs refusés** — le flou et le pochon compris. Il reste une affirmation
+fausse, la carte de 2006, qui relève du décrochage des ères anciennes et non du
+cadrage.
+
+**Une piste écartée, mesures à l'appui.** Un seuil sur l'aire du quadrilatère
+paraissait le levier naturel pour « exiger un meilleur cadrage ». Il n'atteint
+pas ces négatifs : les cartes One Piece tenues en main couvrent 0,44 à 0,53 de
+la photo, plus que la plupart des vraies cartes correctement identifiées. Ce
+sont des objets **bien cadrés** qui ne sont pas des cartes Pokémon. L'aire est
+tout de même exposée sur `Variant`, car elle reste le bon signal pour guider
+l'utilisateur — mais elle ne trie pas les non-cartes.
 
 ### B2 — Une confiance apprise plutôt qu'un seuil
 **Effort : moyen. C'est désormais le chantier le plus urgent.**
