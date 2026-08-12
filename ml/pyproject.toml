@@ -12,6 +12,16 @@ dependencies = [
     "numpy>=1.26",
     "pillow>=10.0",
     "requests>=2.31",
+    # Détection, redressement et augmentations : src/detect.py, src/augment.py.
+    "opencv-python-headless>=4.9",
+    # Photos iPhone au format HEIC (scripts/evaluate.py).
+    "pillow-heif>=0.15",
+    # Vision et Quartz font tourner la détection de quadrilatères, l'orientation
+    # et les deux passes d'OCR — c'est-à-dire les deux tiers du coût d'une
+    # identification. Le projet cible Apple de bout en bout ; ailleurs, seuls
+    # les tests d'invariants et le socle statistique restent utilisables.
+    "pyobjc-framework-Vision>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +31,9 @@ coreml = ["coremltools>=8.0"]
 # Tests des invariants. Aucun n'a besoin de Vision ni du modèle : ils tournent
 # partout, y compris sur un runner Linux.
 dev = ["pytest>=8.0", "ruff>=0.5"]
+# Exploration visuelle de l'index (scripts/explore_index.py, Embedding Atlas).
+# Lourd et sans rapport avec la chaîne d'identification : à part.
+atlas = ["pandas>=2.0", "scipy>=1.11", "umap-learn>=0.5"]
 
 [tool.ruff]
 line-length = 100

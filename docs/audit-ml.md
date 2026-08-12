@@ -499,8 +499,42 @@ l'index actuel donne **199/200 en top-1 et 193/200 en top-5**. Le
 réordonnancement résiduel porte sur des voisinages déjà indécidables, qui
 relèvent précisément du chantier E.
 
-*Reste à faire :* verrou de dépendances, révision épinglée de la source de
-métadonnées, graine fixée partout.
+**Révision de la source épinglée.** `build_metadata.py` lisait
+`pokemon-tcg-data` sur `master` — une cible mouvante : deux reconstructions à un
+mois d'écart donnaient deux index différents sans que rien ne le signale. La
+révision est désormais épinglée à `8b4e3879` (2026-07-17, le commit qui ajoute
+Pitch Black, donc exactement l'état ayant produit les 20 512 cartes mesurées).
+`--check` compare l'épingle à l'amont, `--ref` permet de la déplacer
+délibérément, et `data/processed/source.json` note la révision employée, que
+`export_index.py` recopie dans `index.json`. Le kit livré dit donc d'où viennent
+ses deux moitiés : quel encodeur a produit les vecteurs, quelle révision a
+produit les cartes.
+
+**Verrou de dépendances.** `scripts/lock_dependencies.py` écrit
+`requirements.lock.txt` — 59 paquets, fermeture transitive des dépendances
+*déclarées*, et non un `pip freeze` de l'environnement de travail qui ferait
+passer pandas, umap et Embedding Atlas pour nécessaires à la chaîne
+d'identification.
+
+**Un bug de packaging découvert en le faisant :** `pyproject.toml` ne déclarait
+ni `opencv-python-headless`, ni `pyobjc-framework-Vision`/`Quartz`, ni
+`pillow-heif`, alors que `src/detect.py`, `src/orient.py`, `src/edition.py` et
+`src/augment.py` les importent. **La procédure d'installation du README
+produisait un environnement cassé** — personne ne s'en apercevait, l'environnement
+de développement les ayant reçus par un autre chemin. Les extras sont désormais
+séparés : `coreml`, `dev`, et `atlas` pour l'exploration.
+
+**Graines.** Vérifié : tout l'aléa du dépôt est déjà semé — `default_rng(0)`
+pour les tirages de cartes, `torch.manual_seed` à l'entraînement, et
+`augment.view_rng` qui dérive sa graine de l'identifiant de carte.
+
+*Reste à faire :* enregistrer la provenance dans l'index livré demande une
+reconstruction complète des métadonnées. Elle n'a **pas** été lancée ici, et
+c'est délibéré : `build_metadata.py` réécrit `cards.json` de zéro, ce qui
+effacerait les 49 cartes ajoutées à la main par `add_missing_cards.py` et
+désalignerait l'index de sa banque d'embeddings. À faire à la prochaine
+reconstruction, dans l'ordre documenté par le README. En attendant,
+`export_index.py` le signale au lieu d'inventer une provenance.
 
 ### F — Tests et CI — 🔶 **tests faits, CI à faire**
 **Effort : moyen.**

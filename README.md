@@ -74,7 +74,9 @@ binaire et les photos de test.
 
 ```bash
 cd ml
-python3.11 -m venv .venv && .venv/bin/pip install -e .
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.lock.txt   # versions exactes des mesures
+.venv/bin/pip install -e . --no-deps
 
 .venv/bin/python scripts/build_metadata.py      # métadonnées (pokemon-tcg-data)
 .venv/bin/python scripts/add_missing_cards.py   # sets que cette source ignore (TCGdex)
@@ -92,6 +94,13 @@ Puis, pour reconstituer le kit d'intégration :
 `scripts/refresh_index.py --check` signale les sets sortis depuis la dernière
 construction ; `scripts/add_missing_cards.py --check` dit lesquels sont
 réellement ajoutables et lesquels n'ont d'image nulle part.
+
+**L'index est reconstructible à l'identique.** La source de métadonnées est
+épinglée à une révision précise — lire `master` en ferait une cible mouvante, et
+deux reconstructions à un mois d'écart donneraient deux index différents sans
+que rien ne le signale. `scripts/build_metadata.py --check` compare l'épingle à
+l'amont, `--ref <sha>` la déplace délibérément. Les versions de paquets sont
+figées dans `requirements.lock.txt`.
 
 **Index : 20 512 cartes, 176 sets.** Plus aucune carte des métadonnées n'est
 sans image. **Plus aucune carte de l'index n'est sans image.**

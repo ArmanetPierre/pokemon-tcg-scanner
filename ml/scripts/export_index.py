@@ -30,6 +30,7 @@ from src.search import CardIndex  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 EXPORT_DIR = ROOT / "data" / "export"
 LABELS = ROOT / "data" / "processed" / "discriminability.json"
+SOURCE = ROOT / "data" / "processed" / "source.json"
 
 # Champs nécessaires à l'affichage et au départage par numéro (chantier D).
 # Le reste (attaques, texte, légalité) n'a rien à faire dans le bundle.
@@ -57,6 +58,18 @@ def main() -> int:
     # un autre encodeur ne lève aucune erreur : la recherche rend des voisins,
     # les scores restent dans la plage habituelle, et les réponses sont
     # plausibles et fausses. L'app doit refuser de démarrer sur un désaccord.
+    # Provenance des métadonnées (scripts/build_metadata.py). Avec l'empreinte
+    # de l'encodeur, le kit livré dit d'où viennent ses deux moitiés : quel
+    # modèle a produit les vecteurs, et quelle révision de la source a produit
+    # les cartes.
+    source = json.loads(SOURCE.read_text()) if SOURCE.exists() else None
+    if source is None:
+        print("provenance des métadonnées absente : relancer build_metadata.py "
+              "pour l'inscrire dans l'index.")
+    elif not source.get("matches_pin"):
+        print(f"ATTENTION : métadonnées construites hors épingle "
+              f"({source['revision'][:12]}).")
+
     package = EXPORT_DIR / "CardEncoder.mlpackage"
     encoder_sha = fingerprint(package) if package.exists() else None
     if encoder_sha is None:
@@ -73,6 +86,7 @@ def main() -> int:
         "note": "vecteurs L2-normalisés : la similarité cosinus est un simple "
                 "produit scalaire",
         "encoder_sha256": encoder_sha,
+        "data_source": source,
         "encoder_note": "empreinte de CardEncoder.mlpackage. L'app doit la "
                         "comparer au modèle qu'elle embarque et refuser de "
                         "démarrer si elle diffère : un index et un encodeur "
