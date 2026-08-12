@@ -70,12 +70,19 @@ Et la précision à 25 % de couverture (80 %) est **plus basse** qu'à 100 %
 (89,7 %) : sur cette population, trier par la marge est pire que ne pas trier.
 Le signal de confiance n'est pas seulement insuffisant, il est trompeur.
 
-**Le seuil ne peut pas être réparé par recalibration.** Avec les négatifs enfin
-présents en calibration, `evaluate_real.py --calibrate` donne la mesure exacte
-du problème : pour que le flou d'`IMG_5124` (marge 0,0557) cesse d'être affirmé,
-`FIRM_ID_MARGIN` doit passer de 0,03 à **0,0558** — ce qui fait tomber les
-verdicts fermes de 21/21 à **6/21**. Bloquer un faux positif coûte 71 % de la
-couverture.
+**Le coût du seuil, et une correction.** Avec les négatifs enfin présents en
+calibration, `evaluate_real.py --calibrate` chiffre le problème : pour que le
+flou d'`IMG_5124` (marge 0,0557) cesse d'être affirmé, `FIRM_ID_MARGIN` doit
+passer de 0,03 à **0,0558**, ce qui ne laisse que **6 verdicts fermes sur 21**
+en calibration.
+
+Cette phrase a d'abord été écrite ici sous la forme « bloquer un faux positif
+coûte 71 % de la couverture », et c'était une sur-affirmation. Le seuil ne
+gouverne que les verdicts issus de la **similarité** : sur le banc complet,
+**25 des 29 affirmations fermes viennent du numéro imprimé lu**, chemin qui ne
+passe pas par lui. Le coût produit réel est donc bien moindre que ce que la
+couverture de calibration laisse croire. Ce qui reste vrai, c'est le classement
+des options — voir le chantier D.
 
 **Une hypothèse testée et réfutée.** Si les négatifs étaient simplement flous ou
 plats, un critère de netteté les écarterait sans rien coûter. Mesuré (variance

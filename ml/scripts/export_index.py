@@ -44,24 +44,35 @@ CARD_FIELDS = (
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="mobileclip2-s2")
+    parser.add_argument("--embeddings", type=Path,
+                        help="enrôlement alternatif (ex. centroïde multi-vues)")
     args = parser.parse_args()
 
     index = CardIndex(args.model)
     embeddings = index.embeddings.astype(np.float32)
+
+    # Enrôlement multi-vues (scripts/build_multiview_index.py). Le format ne
+    # change pas — même forme, même ordre de lignes, même recherche — seul le
+    # contenu des vecteurs diffère. C'est ce qui permet de changer de stratégie
+    # d'enrôlement sans toucher au portage Swift.
+    if args.embeddings:
+        embeddings = np.load(args.embeddings).astype(np.float32)
+        if embeddings.shape != index.embeddings.shape:
+            print(f"forme {embeddings.shape} incompatible avec l'index "
+                  f"{index.embeddings.shape}", file=sys.stderr)
+            return 1
+        embeddings /= np.linalg.norm(embeddings, axis=1, keepdims=True)
+        print(f"enrôlement : {args.embeddings.name}")
     print(f"index source : {embeddings.shape} ({embeddings.nbytes / 1e6:.0f} Mo en float32)")
 
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     half = embeddings.astype(np.float16)
     (EXPORT_DIR / "index.bin").write_bytes(half.tobytes())
 
-    # Empreinte de l'encodeur qui a produit ces vecteurs. Un index interrogé par
-    # un autre encodeur ne lève aucune erreur : la recherche rend des voisins,
-    # les scores restent dans la plage habituelle, et les réponses sont
-    # plausibles et fausses. L'app doit refuser de démarrer sur un désaccord.
     # Provenance des métadonnées (scripts/build_metadata.py). Avec l'empreinte
-    # de l'encodeur, le kit livré dit d'où viennent ses deux moitiés : quel
-    # modèle a produit les vecteurs, et quelle révision de la source a produit
-    # les cartes.
+    # de l'encodeur ci-dessous, le kit livré dit d'où viennent ses deux moitiés :
+    # quel modèle a produit les vecteurs, et quelle révision de la source a
+    # produit les cartes.
     source = json.loads(SOURCE.read_text()) if SOURCE.exists() else None
     if source is None:
         print("provenance des métadonnées absente : relancer build_metadata.py "
@@ -70,6 +81,10 @@ def main() -> int:
         print(f"ATTENTION : métadonnées construites hors épingle "
               f"({source['revision'][:12]}).")
 
+    # Empreinte de l'encodeur qui a produit ces vecteurs. Un index interrogé par
+    # un autre encodeur ne lève aucune erreur : la recherche rend des voisins,
+    # les scores restent dans leur plage habituelle, et les réponses sont
+    # plausibles et fausses. L'app doit refuser de démarrer sur un désaccord.
     package = EXPORT_DIR / "CardEncoder.mlpackage"
     encoder_sha = fingerprint(package) if package.exists() else None
     if encoder_sha is None:

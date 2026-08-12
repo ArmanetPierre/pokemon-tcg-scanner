@@ -9,8 +9,11 @@ l'appareil**, destinée à une app iOS.
 > Ce que le système vaut, où il échoue, et ce qu'il ne faut pas lui demander :
 > [`docs/model-card.md`](docs/model-card.md).
 
-**État actuel : 35 identifications correctes sur 39 photos iPhone réelles**
-(89,7 %, IC de Wilson à 95 % : 76-96 %). Le banc annonçait 31/31 jusqu'à ce
+**État actuel : 34 identifications correctes sur 39 photos iPhone réelles**
+(87,2 %, IC de Wilson à 95 % : 73-94 %), et **une seule affirmation ferme
+fausse** sur 29, aucun des 7 négatifs n'étant affirmé. La configuration est
+réglée contre les faux positifs : mieux vaut demander une autre photo
+qu'annoncer une carte fausse avec assurance. Le banc annonçait 31/31 jusqu'à ce
 qu'un troisième lot — cartes anciennes, cadrages ratés, et sept photos sans
 bonne réponse possible — le ramène à cette valeur. Ce lot a aussi produit
 **trois attributions fermes et fausses**, dont une sur un flou que personne ne
