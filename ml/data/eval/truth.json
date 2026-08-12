@@ -1,41 +1,320 @@
 {
   "_comment": "Vérité terrain des photos réelles, lue sur les cartes (nom FR + numéro + code de set imprimé). L'index de référence est en anglais. card_id null = aucune réponse juste possible : soit la carte est absente de l'index (condition absent_index), soit il n'y a pas de carte à identifier (condition dos). Ces photos ne comptent pas dans le top-1 mais sont bel et bien passées dans la chaîne : on y vérifie que le verdict reste 'incertain' ou 'hors index', jamais une attribution ferme.",
+  "_protocol": {
+    "split": "Chaque photo porte un champ `split`. calibration = 1re collection (21 photos, un joueur, un iPhone) ; test = 2e collection (11 photos, un autre joueur, un autre appareil, entièrement en paysage, plus un dos de carte).",
+    "ce_dont_test_est_vraiment_du_hold-out": "Les seuils de confiance FIRM_ID_MARGIN et FIRM_NAME_MARGIN ont été fixés alors que seule la collection 1 existait, et n'ont pas bougé depuis (vérifiable : ils datent de a240b84, la collection 2 est arrivée en 99ba7d2). Pour EUX, la collection 2 est un vrai jeu de test.",
+    "ce_dont_test_n_est_PAS_du_hold-out": "MIN_QUAD_AREA, MIN_MULTI_QUAD_AREA et SHAPE_BUCKET ont été introduits dans 99ba7d2, le commit qui ajoute la collection 2 : ils ont donc été réglés en voyant ces photos. Toute précision de détection mesurée sur le split test est optimiste. Le dire est le but de ce bloc.",
+    "regle": "Ne plus jamais régler quoi que ce soit en regardant le split test. Une constante ajustée sur ces photos exige de reverser la collection concernée en calibration et d'aller chercher de nouvelles photos.",
+    "prochaine_etape": "Le banc a besoin d'un 3e lot, jamais vu, pour redonner un hold-out aux paramètres de détection. Viser 40+ photos, d'autres appareils, et des cartes d'avant Sun & Moon — 47 % de l'index en relève et 0 photo du banc les couvre."
+  },
   "photos": {
-    "sample/IMG_5017.jpeg": {"card_id": "me5-36", "fr": "Funécire 036/084 PBL", "conditions": ["pivote", "reflet", "fond"]},
-    "sample/IMG_5018.jpeg": {"card_id": "me5-22", "fr": "Superdofin 022/084 PBL", "conditions": ["pivote", "incline", "loin", "fond"]},
-    "sample/IMG_5019.jpeg": {"card_id": "me5-22", "fr": "Superdofin 022/084 PBL", "conditions": ["pivote", "incline", "loin", "fond"]},
-    "sample/IMG_5020.jpeg": {"card_id": "me5-6", "fr": "Théffroyable 006/084 PBL", "conditions": ["fond", "reflet"]},
-    "sample/IMG_5021.jpeg": {"card_id": "me5-76", "fr": "Carrière Fossile 076/084 PBL", "conditions": ["pivote", "masque", "contrejour", "fond"]},
-    "sample/IMG_5022.jpeg": {"card_id": "me5-14", "fr": "Poissoroy 014/084 PBL", "conditions": ["pivote", "proche", "masque"]},
-
-    "sample/IMG_5023.jpeg": {"card_id": "mep-23", "fr": "Méga-Dracaufeu X ex 023 MEP", "conditions": ["fullart", "sleeve"]},
-    "sample/IMG_5024.jpeg": {"card_id": "sv2-209", "fr": "Cryodo 209/193 PAL", "conditions": ["illustrationrare", "sleeve"]},
-    "sample/IMG_5025.jpeg": {"card_id": "sv2-248", "fr": "Ordres du Boss 248/193 PAL", "conditions": ["fullart", "sleeve"]},
-    "sample/IMG_5026.jpeg": {"card_id": "mep-24", "fr": "Plumeline ex 024 MEP", "conditions": ["fullart", "sleeve"]},
-    "sample/IMG_5027.jpeg": {"card_id": "sv6-185", "fr": "Verpom 185/167 TWM", "conditions": ["illustrationrare", "sleeve"]},
-    "sample/IMG_5028.jpeg": {"card_id": "me1-152", "fr": "Cadoizo 152/132 MEG", "conditions": ["illustrationrare", "fond", "masque"]},
-    "sample/IMG_5030.jpeg": {"card_id": "me1-36", "fr": "Méga-Blizzaroi ex 036/132 MEG", "conditions": ["fullart", "holo", "sleeve", "fond"]},
-    "sample/IMG_5031.jpeg": {"card_id": "me2-61", "fr": "Méga-Sharpedo ex 061/094 PFL", "conditions": ["fullart", "holo", "sleeve", "fond"]},
-
-    "sample/IMG_5032.jpeg": {"card_id": "me5-67", "fr": "Piclairon 067/084 PBL", "conditions": ["incline", "fond"]},
-    "sample/IMG_5033.jpeg": {"card_id": "me5-23", "fr": "Dynavolt 023/084 PBL", "conditions": ["incline", "fond"]},
-    "sample/IMG_5034.jpeg": {"card_id": "me5-72", "fr": "Fossile Armure Antique 072/084 PBL", "conditions": ["incline", "pivote", "fond"]},
-    "sample/IMG_5035.jpeg": {"card_id": "mee-3", "fr": "Énergie Eau de base 003 MEG", "conditions": ["pivote", "incline", "energie"]},
-    "sample/IMG_5036.jpeg": {"card_id": "me5-91", "fr": "Sinistrail 091/084 PBL secrète", "conditions": ["incline", "illustrationrare", "fond"]},
-    "sample/IMG_5037.jpeg": {"card_id": "me5-59", "fr": "Yuyu 059/084 PBL", "conditions": ["incline", "reflet", "fond"]},
-    "sample/IMG_5038.jpeg": {"card_id": "me5-43", "fr": "Colossinge 043/084 PBL", "conditions": ["incline", "fond"]},
-
-    "sample/Cryodo-059:193.jpeg": {"card_id": "sv2-59", "fr": "Cryodo 059/193 PAL", "conditions": ["couche", "fond"]},
-    "sample/Cuencia-171:193.jpeg": {"card_id": "sv2-171", "fr": "Cuencia 171/193 PAL", "conditions": ["couche", "main", "dresseur", "loin", "fond"]},
-    "sample/Diamat-139:193.jpeg": {"card_id": "sv2-139", "fr": "Diamat 139/193 PAL", "conditions": ["couche", "fond"]},
-    "sample/Electrode-067:193.jpeg": {"card_id": "sv2-67", "fr": "Électrode 067/193 PAL", "conditions": ["couche", "fond"]},
-    "sample/Energie Invesrsion-192:193.jpeg": {"card_id": "sv2-192", "fr": "Énergie Inversion 192/193 PAL", "conditions": ["couche", "energie"]},
-    "sample/Famignol-168:193.jpeg": {"card_id": "sv2-168", "fr": "Famignol 168/193 PAL", "conditions": ["couche"]},
-    "sample/Hariyama-113:193.jpeg": {"card_id": "sv2-113", "fr": "Hariyama 113/193 PAL", "conditions": ["couche"]},
-    "sample/Makuhita-112:193.jpeg": {"card_id": "sv2-112", "fr": "Makuhita 112/193 PAL", "conditions": ["couche", "loin"]},
-    "sample/Pitrouille-077:182.jpeg": {"card_id": "sv4-77", "fr": "Pitrouille 077/182 PAR", "conditions": ["couche", "loin", "fond"]},
-    "sample/Quarternarc-118:193.jpeg": {"card_id": "sv2-118", "fr": "Quartermac 118/193 PAL", "conditions": ["couche", "fond"]},
-    "sample/Nothing.jpeg": {"card_id": null, "fr": "dos de carte — rien à identifier", "conditions": ["couche", "dos"]}
+    "sample/IMG_5017.jpeg": {
+      "card_id": "me5-36",
+      "fr": "Funécire 036/084 PBL",
+      "conditions": [
+        "pivote",
+        "reflet",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5018.jpeg": {
+      "card_id": "me5-22",
+      "fr": "Superdofin 022/084 PBL",
+      "conditions": [
+        "pivote",
+        "incline",
+        "loin",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5019.jpeg": {
+      "card_id": "me5-22",
+      "fr": "Superdofin 022/084 PBL",
+      "conditions": [
+        "pivote",
+        "incline",
+        "loin",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5020.jpeg": {
+      "card_id": "me5-6",
+      "fr": "Théffroyable 006/084 PBL",
+      "conditions": [
+        "fond",
+        "reflet"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5021.jpeg": {
+      "card_id": "me5-76",
+      "fr": "Carrière Fossile 076/084 PBL",
+      "conditions": [
+        "pivote",
+        "masque",
+        "contrejour",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5022.jpeg": {
+      "card_id": "me5-14",
+      "fr": "Poissoroy 014/084 PBL",
+      "conditions": [
+        "pivote",
+        "proche",
+        "masque"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5023.jpeg": {
+      "card_id": "mep-23",
+      "fr": "Méga-Dracaufeu X ex 023 MEP",
+      "conditions": [
+        "fullart",
+        "sleeve"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5024.jpeg": {
+      "card_id": "sv2-209",
+      "fr": "Cryodo 209/193 PAL",
+      "conditions": [
+        "illustrationrare",
+        "sleeve"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5025.jpeg": {
+      "card_id": "sv2-248",
+      "fr": "Ordres du Boss 248/193 PAL",
+      "conditions": [
+        "fullart",
+        "sleeve"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5026.jpeg": {
+      "card_id": "mep-24",
+      "fr": "Plumeline ex 024 MEP",
+      "conditions": [
+        "fullart",
+        "sleeve"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5027.jpeg": {
+      "card_id": "sv6-185",
+      "fr": "Verpom 185/167 TWM",
+      "conditions": [
+        "illustrationrare",
+        "sleeve"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5028.jpeg": {
+      "card_id": "me1-152",
+      "fr": "Cadoizo 152/132 MEG",
+      "conditions": [
+        "illustrationrare",
+        "fond",
+        "masque"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5030.jpeg": {
+      "card_id": "me1-36",
+      "fr": "Méga-Blizzaroi ex 036/132 MEG",
+      "conditions": [
+        "fullart",
+        "holo",
+        "sleeve",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5031.jpeg": {
+      "card_id": "me2-61",
+      "fr": "Méga-Sharpedo ex 061/094 PFL",
+      "conditions": [
+        "fullart",
+        "holo",
+        "sleeve",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5032.jpeg": {
+      "card_id": "me5-67",
+      "fr": "Piclairon 067/084 PBL",
+      "conditions": [
+        "incline",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5033.jpeg": {
+      "card_id": "me5-23",
+      "fr": "Dynavolt 023/084 PBL",
+      "conditions": [
+        "incline",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5034.jpeg": {
+      "card_id": "me5-72",
+      "fr": "Fossile Armure Antique 072/084 PBL",
+      "conditions": [
+        "incline",
+        "pivote",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5035.jpeg": {
+      "card_id": "mee-3",
+      "fr": "Énergie Eau de base 003 MEG",
+      "conditions": [
+        "pivote",
+        "incline",
+        "energie"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5036.jpeg": {
+      "card_id": "me5-91",
+      "fr": "Sinistrail 091/084 PBL secrète",
+      "conditions": [
+        "incline",
+        "illustrationrare",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5037.jpeg": {
+      "card_id": "me5-59",
+      "fr": "Yuyu 059/084 PBL",
+      "conditions": [
+        "incline",
+        "reflet",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5038.jpeg": {
+      "card_id": "me5-43",
+      "fr": "Colossinge 043/084 PBL",
+      "conditions": [
+        "incline",
+        "fond"
+      ],
+      "split": "calibration"
+    },
+    "sample/Cryodo-059:193.jpeg": {
+      "card_id": "sv2-59",
+      "fr": "Cryodo 059/193 PAL",
+      "conditions": [
+        "couche",
+        "fond"
+      ],
+      "split": "test"
+    },
+    "sample/Cuencia-171:193.jpeg": {
+      "card_id": "sv2-171",
+      "fr": "Cuencia 171/193 PAL",
+      "conditions": [
+        "couche",
+        "main",
+        "dresseur",
+        "loin",
+        "fond"
+      ],
+      "split": "test"
+    },
+    "sample/Diamat-139:193.jpeg": {
+      "card_id": "sv2-139",
+      "fr": "Diamat 139/193 PAL",
+      "conditions": [
+        "couche",
+        "fond"
+      ],
+      "split": "test"
+    },
+    "sample/Electrode-067:193.jpeg": {
+      "card_id": "sv2-67",
+      "fr": "Électrode 067/193 PAL",
+      "conditions": [
+        "couche",
+        "fond"
+      ],
+      "split": "test"
+    },
+    "sample/Energie Invesrsion-192:193.jpeg": {
+      "card_id": "sv2-192",
+      "fr": "Énergie Inversion 192/193 PAL",
+      "conditions": [
+        "couche",
+        "energie"
+      ],
+      "split": "test"
+    },
+    "sample/Famignol-168:193.jpeg": {
+      "card_id": "sv2-168",
+      "fr": "Famignol 168/193 PAL",
+      "conditions": [
+        "couche"
+      ],
+      "split": "test"
+    },
+    "sample/Hariyama-113:193.jpeg": {
+      "card_id": "sv2-113",
+      "fr": "Hariyama 113/193 PAL",
+      "conditions": [
+        "couche"
+      ],
+      "split": "test"
+    },
+    "sample/Makuhita-112:193.jpeg": {
+      "card_id": "sv2-112",
+      "fr": "Makuhita 112/193 PAL",
+      "conditions": [
+        "couche",
+        "loin"
+      ],
+      "split": "test"
+    },
+    "sample/Pitrouille-077:182.jpeg": {
+      "card_id": "sv4-77",
+      "fr": "Pitrouille 077/182 PAR",
+      "conditions": [
+        "couche",
+        "loin",
+        "fond"
+      ],
+      "split": "test"
+    },
+    "sample/Quarternarc-118:193.jpeg": {
+      "card_id": "sv2-118",
+      "fr": "Quartermac 118/193 PAL",
+      "conditions": [
+        "couche",
+        "fond"
+      ],
+      "split": "test"
+    },
+    "sample/Nothing.jpeg": {
+      "card_id": null,
+      "fr": "dos de carte — rien à identifier",
+      "conditions": [
+        "couche",
+        "dos"
+      ],
+      "split": "test"
+    }
   },
   "_multi": {
     "sample/IMG_5029.jpeg": "plusieurs cartes étalées — sert à tester la détection multi-cartes, pas l'identification"

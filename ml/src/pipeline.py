@@ -283,16 +283,23 @@ class Identification:
 
 
 def identify(path: str, bgr: np.ndarray, encoder, index,
-             k: int = 5, orient: str = "text") -> Identification:
+             k: int = 5, orient: str = "text", use_band: bool = True) -> Identification:
     """Chaîne complète : détection, orientation, embedding, recherche, bandeau.
 
     Point d'entrée unique — c'est cette séquence que l'app doit reproduire.
     La confiance est calculée sur l'ordre issu de la similarité, puis relevée
     si le numéro imprimé a tranché ; l'inverse donnerait des marges calculées
     sur une liste réordonnée, donc dénuées de sens.
+
+    `use_band=False` coupe la lecture du numéro imprimé et ne laisse que la
+    similarité. Ce n'est pas un mode d'exploitation : c'est le bras d'ablation
+    du banc d'essai, qui sépare ce que l'embedding apporte de ce que l'OCR
+    rattrape (mesuré : 26/31 contre 31/31 — l'OCR porte un sixième du résultat).
     """
     variant, hits = identify_photo(path, bgr, encoder, index, k=k, orient=orient)
-    refined, band_verdict = refine_with_band(variant, hits, index)
+    refined, band_verdict = (
+        refine_with_band(variant, hits, index) if use_band else (hits, None)
+    )
     confidence = classify_confidence(hits, band_verdict)
     return Identification(
         hits=refined,

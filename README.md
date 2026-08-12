@@ -6,12 +6,27 @@ l'appareil**, destinée à une app iOS.
 > En anglais : [`OVERVIEW.md`](OVERVIEW.md) — architecture, mesures, pièges et
 > limites, en un seul document.
 
-**État actuel : 31 identifications correctes sur 31 photos iPhone réelles**,
-issues de deux collections photographiées par deux personnes (cartes françaises,
-index anglais, conditions ordinaires — contre-jour, pochette, fond chargé, cartes
-inclinées, et un second lot entièrement en paysage). Une 32ᵉ photo montre un dos
-de carte : la chaîne répond « incertain », ce qui est la bonne réponse. Mesuré
-avec le modèle Core ML exporté, sur Mac.
+**État actuel : 31 identifications correctes sur 31 photos iPhone réelles** —
+soit, sur un banc de cette taille, **une précision démontrée d'au moins 89 %**
+(IC de Wilson à 95 %). Les photos viennent de deux collections photographiées
+par deux personnes (cartes françaises, index anglais, conditions ordinaires —
+contre-jour, pochette, fond chargé, cartes inclinées, et un second lot
+entièrement en paysage). Une 32ᵉ photo montre un dos de carte : la chaîne répond
+« incertain », ce qui est la bonne réponse. Mesuré avec le modèle Core ML
+exporté, sur Mac.
+
+**Ce que chaque étage apporte**, mesuré par ablation sur ce même banc — c'est la
+chaîne qui identifie, pas le modèle seul :
+
+| Configuration | Top-1 |
+|---|---|
+| photo entière, sans détection ni orientation | 4/31 (13 %, IC95 5-29) |
+| + détection, filtrage, orientation → **similarité seule** | 26/31 (84 %, IC95 67-93) |
+| + lecture du numéro imprimé → **chaîne complète** | 31/31 (100 %, IC95 89-100) |
+
+Le cadrage vaut 22 identifications, l'embedding ne travaille que sur ce qu'on
+lui donne, et la lecture du numéro imprimé en rattrape 5 de plus. Reproductible
+par `scripts/evaluate_real.py --ablation`.
 
 **Ça tourne sur iPhone.** Le portage Swift est intégré à une app Expo,
 [hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), comme
@@ -90,6 +105,7 @@ source publique ne les servant.
 
 ```bash
 .venv/bin/python scripts/evaluate_real.py            # banc d'essai, PyTorch
+.venv/bin/python scripts/evaluate_real.py --ablation # ce qu'apporte chaque étage
 .venv/bin/python scripts/evaluate_real.py --coreml   # avec le modèle embarqué
 .venv/bin/python scripts/scan.py photo.jpeg          # identifier une photo
 ```
@@ -97,6 +113,20 @@ source publique ne les servant.
 Le banc s'appuie sur `ml/data/eval/truth.json`, la vérité terrain établie en
 lisant nom, numéro et code de set imprimés sur chaque carte. Les photos
 correspondantes sont hors dépôt.
+
+**Protocole.** Les photos sont réparties en deux splits, inscrits dans
+`truth.json` avec le détail de ce dont chacun est — et n'est pas — du hold-out :
+`calibration` (21 photos, 1ʳᵉ collection) et `test` (11 photos, 2ᵉ collection,
+un autre joueur et un autre appareil). Les seuils de confiance ont été fixés
+avant l'arrivée du split test et n'ont pas bougé depuis ; les filtres de
+détection, eux, ont été réglés en le voyant, et toute précision de détection
+mesurée dessus est donc optimiste. Le banc rapporte les deux splits séparément,
+avec leurs intervalles.
+
+Chaque taux sort avec son intervalle de Wilson, et la confiance est rapportée
+par une **courbe risque/couverture** plutôt que par un seuil : un seuil n'est
+comparable ni entre deux modèles ni entre deux espaces métriques, une courbe
+l'est toujours.
 
 ## Trois choses à savoir avant de toucher au code
 

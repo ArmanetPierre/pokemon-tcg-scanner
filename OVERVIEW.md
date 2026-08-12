@@ -6,13 +6,28 @@ set it was printed in, and how much that answer can be trusted.
 
 The rest of this repository is in French; this file is the English way in.
 
-**Status.** 31 correct identifications out of 31 real iPhone photographs, across
-two collections photographed by two people (French cards against an English
-index, in ordinary conditions — backlight, sleeves, cluttered backgrounds, tilted
-cards, and a second batch shot entirely in landscape), measured on a Mac. A 32nd
-photograph shows the back of a card: the chain answers "uncertain", which is the
-correct answer. It now also runs on an iPhone, inside a real app, where the
-encoder takes **5.5 ms** on the Neural Engine.
+**Status.** 31 correct identifications out of 31 real iPhone photographs —
+which on a bench this size demonstrates **at least 89 % precision**, not 100 %
+(Wilson 95 % interval). The photographs come from two collections shot by two
+people (French cards against an English index, in ordinary conditions —
+backlight, sleeves, cluttered backgrounds, tilted cards, and a second batch shot
+entirely in landscape), measured on a Mac. A 32nd photograph shows the back of a
+card: the chain answers "uncertain", which is the correct answer. It now also
+runs on an iPhone, inside a real app, where the encoder takes **5.5 ms** on the
+Neural Engine.
+
+**What each stage contributes**, by ablation on that same bench:
+
+| Configuration | Top-1 |
+|---|---|
+| whole photograph, no detection or orientation | 4/31 (13 %, CI95 5-29) |
+| + detection, filtering, orientation → **similarity alone** | 26/31 (84 %, CI95 67-93) |
+| + reading the printed number → **full chain** | 31/31 (100 %, CI95 89-100) |
+
+Framing is worth 22 identifications; the embedding only ever works on what it is
+handed; reading the printed collector number recovers 5 more. The headline
+number is a property of the *chain*, not of the model — reach for a better
+encoder and you are optimising the stage that contributes least.
 
 ---
 
@@ -166,10 +181,15 @@ actually be added, and which have no image anywhere.
 ## Checking it
 
 ```bash
-.venv/bin/python scripts/evaluate_real.py           # the bench, on PyTorch
-.venv/bin/python scripts/evaluate_real.py --coreml  # on the exported model
-.venv/bin/python scripts/scan.py photo.jpeg         # identify one photograph
+.venv/bin/python scripts/evaluate_real.py            # the bench, on PyTorch
+.venv/bin/python scripts/evaluate_real.py --ablation # what each stage contributes
+.venv/bin/python scripts/evaluate_real.py --coreml   # on the exported model
+.venv/bin/python scripts/scan.py photo.jpeg          # identify one photograph
 ```
+
+Every rate is reported per split (`calibration` / `test`) with its Wilson
+interval, and confidence as a risk-coverage curve with its AURC. A threshold is
+comparable neither across models nor across metric spaces; a curve always is.
 
 `integration-kit/test/` holds fixtures for validating a port in stages, with
 expected values in `expected.json`. Start with the preprocessing alone: encode
@@ -233,11 +253,23 @@ single card name — several printings of one artwork across different sets. A
 tight margin usually means "right card, unsure which printing", which is worth
 telling someone, and is not the same as not knowing.
 
-These thresholds were calibrated on 18 photographs from one player, and have
-since held unchanged on a second player's 11 photographs plus one photograph of a
-card back — no over-claiming on either, and the card back correctly lands in
-`uncertain`. 32 photographs is still a small sample: two collections, one phone
-model, no organised-play conditions.
+These thresholds were calibrated on the first collection and have not moved
+since; the second player's 11 photographs plus one card back are therefore
+genuine held-out data **for the thresholds** — no over-claiming on either, and
+the card back correctly lands in `uncertain`. They are *not* held out for the
+quadrilateral filters, which were tuned in the same commit that added them; the
+split annotations in `truth.json` say exactly which is which.
+
+Reported as a curve rather than a threshold, on the similarity-only arm: the
+margin sorts well (**AURC 0.047**), and **a margin of 0.0141 buys 100 % precision
+at 65 % coverage** — the shipped 0.03 is more conservative than the bench
+requires. On the full chain every answer is correct, so the curve is flat and
+says nothing; that is a limit of 31 photographs, not evidence of perfection.
+
+32 photographs remains a small sample: two collections, one phone model, no
+organised-play conditions, and **not one card older than Sun & Moon** while 47 %
+of the index is. `docs/audit-ml.md` measures that blind spot on 1 650 synthetic
+queries and finds the WotC era 19 points below Diamond & Pearl.
 
 ---
 
