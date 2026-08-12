@@ -18,6 +18,15 @@ dependencies = [
 # Export iOS. Séparé car coremltools contraint fortement la version de torch :
 # on ne veut pas que cette contrainte bloque le prototypage.
 coreml = ["coremltools>=8.0"]
+# Tests des invariants. Aucun n'a besoin de Vision ni du modèle : ils tournent
+# partout, y compris sur un runner Linux.
+dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Les modules sont importés en `src.x` comme dans les scripts, sans installer
+# le paquet : `pip install -e .` n'expose pas `src/` en tant que tel.
+pythonpath = ["."]

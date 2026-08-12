@@ -299,14 +299,23 @@ le projet aujourd'hui, et il l'assemble très bien — et « travail de ML ».
 
 ## 8. Plan d'amélioration, par rapport gain / effort
 
-### A — Banc synthétique stratifié, en garde anti-régression
-**Effort : faible (script déjà écrit et exécuté).**
-Intégrer le générateur d'augmentations et l'évaluation par ère comme
-`scripts/evaluate_synthetic.py`. 1 650 requêtes en ~4 min. Sortie JSON, pas du
-texte imprimé.
-*Critère de sortie :* toute modification de l'index, du prétraitement ou du
-modèle produit un tableau par ère comparable au précédent ; une régression de
-plus de 2 points sur une ère bloque.
+### A — Banc synthétique stratifié, en garde anti-régression — ✅ **fait**
+**Effort : faible.**
+
+Livré : le modèle de dégradation est isolé dans `ml/src/augment.py` (chaque
+étage documenté par la condition réelle qu'il reproduit) et le banc dans
+`ml/scripts/evaluate_synthetic.py` — taux par ère avec intervalles de Wilson,
+sortie JSON, tirage déterministe, et un drapeau `--projection` pour comparer une
+variante de l'espace.
+
+Un défaut de l'audit initial est corrigé au passage : le script de mesure
+tirait ses graines de `hash()`, randomisé entre processus par
+`PYTHONHASHSEED`. Les chiffres du §1.3 restent valides comme mesure, mais
+n'étaient pas reproductibles bit à bit ; `augment.view_rng` dérive désormais la
+graine de la chaîne elle-même. `scripts/audit/exp_synthetic.py` est supprimé au
+profit du script de production.
+
+*Reste à faire :* le brancher en CI avec un seuil de régression par ère.
 
 ### B — Protocole d'évaluation défendable — ✅ **fait**
 **Effort : faible. Impact : c'est ce qui rend tout le reste crédible.**
@@ -378,15 +387,33 @@ cadrage du bandeau plutôt que d'échouer en silence.
 *Critère de sortie :* les 884 cartes à voisin ≥ 0,99 sont étiquetées, et le
 verdict `edition` par similarité seule leur est interdit.
 
-### F — Tests et CI
+### F — Tests et CI — 🔶 **tests faits, CI à faire**
 **Effort : moyen.**
-`pytest` sur les invariants : parité géométrique du prétraitement contre un
-tenseur de référence figé, alignement embeddings ↔ `card_ids`, `_digit_distance`,
-`match_edition` sur cas limites, `classify_confidence` sur ordres réordonnés,
-`known_pair`. Plus un banc synthétique réduit (150 requêtes) en CI sur runner
-macOS.
-*Critère de sortie :* le seuil de parité Core ML de 0,98 est vérifié par la CI,
-pas par un humain qui pense à lancer le script.
+
+Livré : **36 tests** dans `ml/tests/`, exécutables partout — aucun ne demande
+Vision, le modèle ou l'index de 42 Mo.
+
+- `test_stats.py` — le socle statistique. Si ces valeurs dérivent, tous les
+  chiffres publiés dérivent avec elles. Dont l'invariance d'échelle de l'AURC,
+  qui est la propriété rendant deux espaces comparables.
+- `test_invariants.py` — les pièges d'`AGENTS.md` §3, chacun devenu un test :
+  le recadrage centré rogne bien le haut d'une carte portrait, l'écrasement
+  direct produit bien une autre image, le total imprimé doit correspondre
+  exactement, les marges se calculent avant réordonnancement, le numéro lu prime
+  sur les marges.
+
+Un comportement non documenté est apparu à l'écriture des tests, et il est
+maintenant inscrit : **une erreur d'OCR sur le zéro de tête n'est pas
+rattrapable.** Les zéros de tête sont retirés avant comparaison, donc une
+lecture « 143 » pour un « 043 » imprimé devient 143 contre 43 — deux longueurs
+différentes, donc aucune correspondance, alors que c'est bien une substitution
+d'un seul chiffre. Le système refuse plutôt que de risquer une fausse
+attribution, ce qui est le bon sens de l'erreur, mais cela coûte du rappel sur
+les sets à numéros imprimés sur trois chiffres.
+
+*Reste à faire :* la CI. Un runner macOS pour que le banc réel et la parité
+Core ML tournent ; les 36 tests et le banc synthétique réduit peuvent tourner
+sur Linux.
 
 ### G — Traçabilité et reproductibilité
 **Effort : faible.**

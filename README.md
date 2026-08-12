@@ -128,6 +128,22 @@ par une **courbe risque/couverture** plutôt que par un seuil : un seuil n'est
 comparable ni entre deux modèles ni entre deux espaces métriques, une courbe
 l'est toujours.
 
+**Le banc synthétique**, lui, couvre tout l'index — 31 photos de cartes récentes
+ne peuvent pas voir un décrochage par ère, alors que 47 % de l'index précède Sun
+& Moon :
+
+```bash
+.venv/bin/python scripts/evaluate_synthetic.py            # 150 cartes par ère
+```
+
+La requête est un scan de référence dégradé ([`src/augment.py`](ml/src/augment.py) :
+perspective résiduelle, sous-échantillonnage, flou, exposition, reflet holo,
+bruit, JPEG), donc la vérité terrain est gratuite et exacte. C'est une mesure
+**relative** — elle compare des ères, des sets et des variantes de modèle entre
+elles ; elle ne prédit pas la précision sur de vraies photos, faute de
+reproduire l'optique du capteur et les erreurs de la détection. Le juge de paix
+reste `evaluate_real.py`.
+
 ## Trois choses à savoir avant de toucher au code
 
 Elles ont chacune coûté du temps, et sont détaillées dans
