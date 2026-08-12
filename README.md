@@ -12,11 +12,12 @@ qu'un troisième lot — cartes anciennes, cadrages ratés, et sept photos sans
 bonne réponse possible — le ramène à cette valeur. Ce lot a aussi produit
 **trois attributions fermes et fausses**, dont une sur un flou que personne ne
 peut identifier : voir `docs/audit-ml.md` §0. Les photos viennent de trois
-collections photographiées par plusieurs personnes (cartes françaises, index anglais, conditions ordinaires —
-contre-jour, pochette, fond chargé, cartes inclinées, et un second lot
-entièrement en paysage). Une 32ᵉ photo montre un dos de carte : la chaîne répond
-« incertain », ce qui est la bonne réponse. Mesuré avec le modèle Core ML
-exporté, sur Mac.
+collections photographiées par plusieurs personnes (cartes françaises, index
+anglais, conditions ordinaires — contre-jour, pochette, fond chargé, cartes
+inclinées, un lot entièrement en paysage, et des cartes en classeur). Sept
+autres photos n'ont **aucune bonne réponse possible** : dos de carte, cartes
+One Piece, carte coréenne, pochon porte-cartes, flou illisible. La chaîne se
+tait correctement sur six d'entre elles. Mesuré sur Mac.
 
 **Ce que chaque étage apporte**, mesuré par ablation sur ce même banc — c'est la
 chaîne qui identifie, pas le modèle seul :
@@ -128,14 +129,19 @@ Le banc s'appuie sur `ml/data/eval/truth.json`, la vérité terrain établie en
 lisant nom, numéro et code de set imprimés sur chaque carte. Les photos
 correspondantes sont hors dépôt.
 
-**Protocole.** Les photos sont réparties en deux splits, inscrits dans
+**Protocole.** Les 46 photos sont réparties en deux splits, inscrits dans
 `truth.json` avec le détail de ce dont chacun est — et n'est pas — du hold-out :
-`calibration` (21 photos, 1ʳᵉ collection) et `test` (11 photos, 2ᵉ collection,
-un autre joueur et un autre appareil). Les seuils de confiance ont été fixés
-avant l'arrivée du split test et n'ont pas bougé depuis ; les filtres de
-détection, eux, ont été réglés en le voyant, et toute précision de détection
-mesurée dessus est donc optimiste. Le banc rapporte les deux splits séparément,
-avec leurs intervalles.
+`calibration` (25 photos, dont 4 sans bonne réponse) et `test` (21 photos, dont
+3 sans bonne réponse). Les seuils de confiance ont été fixés avant l'arrivée du
+2ᵉ lot et n'ont pas bougé ; les filtres de détection, eux, ont été réglés en le
+voyant, et le 3ᵉ lot leur rend ce hold-out perdu. Le banc rapporte les deux
+splits séparément, avec leurs intervalles.
+
+Les négatifs sont majoritairement en calibration, et c'est délibéré : jusqu'au
+3ᵉ lot, **aucune** photo de calibration n'était sans réponse, donc le
+comportement de refus n'était calibré sur rien. `--calibrate` en tient compte —
+un seuil doit atteindre 100 % de précision sur les positifs *et* passer au-dessus
+de ce que les négatifs obtiennent.
 
 Chaque taux sort avec son intervalle de Wilson, et la confiance est rapportée
 par une **courbe risque/couverture** plutôt que par un seuil : un seuil n'est
