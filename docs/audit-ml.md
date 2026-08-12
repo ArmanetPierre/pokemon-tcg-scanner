@@ -452,14 +452,55 @@ scoring (index ×4, 84 Mo), et k=1 actuel.
 *Critère de sortie :* décision chiffrée sur le banc synthétique, ventilée par
 ère et par coût mémoire.
 
-### E — Exposer le plafond structurel dans le produit
+### E — Exposer le plafond structurel dans le produit — ✅ **fait**
 **Effort : faible. Impact produit direct.**
-Calculer pour chaque carte sa marge intrinsèque (§5) et l'écrire dans
-`cards.json` : `image_discriminable: true | false`. L'app sait alors *avant* de
-répondre qu'une carte donnée exige la lecture du numéro, et peut demander un
-cadrage du bandeau plutôt que d'échouer en silence.
-*Critère de sortie :* les 884 cartes à voisin ≥ 0,99 sont étiquetées, et le
-verdict `edition` par similarité seule leur est interdit.
+
+`ml/scripts/label_discriminability.py` étiquette chaque carte, **par la mesure
+et non par une règle** : il rejoue les vues dégradées en cache contre l'index
+entier et regarde ce que la recherche rend. Une carte est marquée
+`needs_printed_number` si aucune de ses vues ne la retrouve en tête avec une
+marge exploitable. `export_index.py` verse le champ dans `cards.json`.
+
+**4 787 cartes sur 20 512 (23,3 %)** ne peuvent pas être tranchées par l'image
+seule — soit cinq fois plus que ce que les 884 quasi-doublons laissaient
+supposer. Validation croisée rassurante : **les 884 sont toutes capturées.**
+
+| Série | Cartes | Numéro requis |
+|---|---:|---:|
+| Base | 494 | **78,3 %** |
+| E-Card | 529 | 29,3 % |
+| Sword & Shield | 3 667 | 26,7 % |
+| Scarlet & Violet | 3 595 | 16,9 % |
+| Diamond & Pearl | 900 | 13,6 % |
+| Platinum | 517 | 7,5 % |
+
+L'intérêt est que l'information arrive **avant** la réponse : quand le premier
+candidat porte le drapeau, une marge serrée n'est pas une anomalie mais le
+comportement attendu, et l'app peut demander un cadrage du bandeau au lieu
+d'afficher un « incertain » qu'elle aurait pu prévoir.
+
+### G — Traçabilité et reproductibilité — 🔶 **empreintes faites, verrous à faire**
+**Effort : faible.**
+
+`ml/src/fingerprint.py` calcule l'empreinte SHA-256 d'un artefact, répertoire
+compris (chemins relatifs triés et intégrés au condensat, pour qu'un poids
+déplacé change l'empreinte). `export_coreml.py` l'écrit dans
+`encoder_meta.json`, `export_index.py` la réplique dans `index.json`, et
+`AGENTS.md` §4 dit à l'app de comparer les deux et de **refuser de démarrer**
+sur un désaccord.
+
+C'était le seul piège du kit qui n'était pas outillé : un index et un encodeur
+désaccordés ne lèvent aucune erreur, la recherche rend des voisins, les scores
+restent dans leur plage, et les réponses sont plausibles et fausses.
+
+Un chiffre périmé est corrigé au passage : `AGENTS.md` annonçait « top-1
+identique sur 200/200 » pour le passage float32 → float16 ; la mesure sur
+l'index actuel donne **199/200 en top-1 et 193/200 en top-5**. Le
+réordonnancement résiduel porte sur des voisinages déjà indécidables, qui
+relèvent précisément du chantier E.
+
+*Reste à faire :* verrou de dépendances, révision épinglée de la source de
+métadonnées, graine fixée partout.
 
 ### F — Tests et CI — 🔶 **tests faits, CI à faire**
 **Effort : moyen.**

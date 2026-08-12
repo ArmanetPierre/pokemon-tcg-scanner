@@ -29,6 +29,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.encoder import REGISTRY, geometric_preprocess, load_encoder  # noqa: E402
+from src.fingerprint import fingerprint, short  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORT_DIR = ROOT / "data" / "export"
@@ -134,11 +135,19 @@ def main() -> int:
     print(f"  min {similarities.min():.5f}  moyenne {similarities.mean():.5f}  "
           f"max {similarities.max():.5f}  sur {len(similarities)} images")
 
+    # Empreinte du paquet qui vient d'être écrit. `export_index.py` inscrit la
+    # même valeur dans `index.json` : c'est ce qui permet à l'app de vérifier
+    # que son modèle et son index viennent bien du même export, au lieu de
+    # produire silencieusement de fausses réponses confiantes.
+    encoder_sha = fingerprint(package)
+    print(f"empreinte de l'encodeur : {short(encoder_sha)}")
+
     (EXPORT_DIR / "encoder_meta.json").write_text(json.dumps({
         "model": encoder.name,
         "dim": encoder.dim,
         "input_size": size,
         "precision": args.precision,
+        "encoder_sha256": encoder_sha,
         # La normalisation est dans le graphe (scale/bias de l'ImageType) :
         # Swift ne fournit que des pixels 0-255. En revanche la géométrie
         # ci-dessous doit être reproduite à l'identique côté app.
