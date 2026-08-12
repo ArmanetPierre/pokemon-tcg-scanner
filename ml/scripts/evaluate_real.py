@@ -95,6 +95,7 @@ class Record:
     split: str
     expected: str | None
     label_fr: str
+    conditions: list[str] = field(default_factory=list)
     predicted: str | None = None
     top_ids: list[str] = field(default_factory=list)
     top1_score: float = 0.0   # score absolu du meilleur candidat (pour FALLBACK_SCORE)
@@ -144,7 +145,8 @@ def run_arm(truth: dict, encoder, index, top_k: int, *,
             continue
 
         rec = Record(path=rel_path, split=info.get("split", "calibration"),
-                     expected=info["card_id"], label_fr=info["fr"])
+                     expected=info["card_id"], label_fr=info["fr"],
+                     conditions=info.get("conditions", []))
 
         if detect:
             result = identify(str(PROJECT_ROOT / rel_path), bgr, encoder, index,
@@ -254,22 +256,52 @@ def calibrate(records: list[Record]) -> None:
     une mesure.
     """
     cal = [r for r in records if r.split == "calibration" and r.answerable]
+    negatifs = [r for r in records if r.split == "calibration" and not r.answerable]
     if not cal:
         print("\npas de photos de calibration : rien à proposer")
         return
 
-    print(f"\n{'=' * 74}\nSeuils proposés — calibration seule ({len(cal)} photos)\n{'=' * 74}")
+    print(f"\n{'=' * 74}\nSeuils proposés — calibration seule "
+          f"({len(cal)} photos + {len(negatifs)} négatifs)\n{'=' * 74}")
 
     rc = risk_coverage([r.margin_id for r in cal], [r.correct for r in cal])
-    cov, thr = rc.coverage_at(1.0)
-    print(f"\nFIRM_ID_MARGIN   >= {thr:.4f}   (100 % de précision, {cov:.0%} de couverture)")
+    cov, thr_pos = rc.coverage_at(1.0)
+    print(f"\nsur les positifs   : marge >= {thr_pos:.4f} donne 100 % de précision "
+          f"({cov:.0%} de couverture)")
+
+    # Un seuil calibré sur les seuls positifs ne dit rien du cas le plus grave :
+    # une photo SANS bonne réponse à laquelle le système en donne une quand
+    # même. Le seuil doit donc aussi passer au-dessus de ce que les négatifs
+    # obtiennent — un dos de carte, un flou illisible, une carte d'un autre jeu
+    # produisent eux aussi une marge, et rien ne garantit qu'elle soit petite.
+    thr = thr_pos
+    if negatifs:
+        pire = max(negatifs, key=lambda r: r.margin_id)
+        print(f"sur les négatifs   : la pire marge est {pire.margin_id:.4f} "
+              f"({Path(pire.path).name}, {', '.join(pire.conditions)})")
+        if pire.margin_id >= thr_pos:
+            thr = pire.margin_id + 0.0001
+            perdu = sum(1 for r in cal if thr_pos <= r.margin_id < thr)
+            print(f"  -> elle DÉPASSE le seuil des positifs : il faut monter à "
+                  f"{thr:.4f}, au prix de {perdu} identification(s) fermes perdue(s).")
+        else:
+            print("  -> elle reste sous le seuil des positifs : pas de contrainte.")
+    else:
+        print("sur les négatifs   : AUCUN en calibration — le comportement de refus")
+        print("                     n'est donc calibré sur rien, quel que soit le seuil.")
+
+    couverture = sum(1 for r in cal if r.margin_id >= thr) / len(cal)
+    print(f"\nFIRM_ID_MARGIN   >= {thr:.4f}   ({couverture:.0%} des positifs restent fermes)")
 
     # Marge de nom : plus petite marge observée parmi les photos dont le premier
     # candidat porte le BON nom. En dessous, le niveau « nom » cesse d'être sûr.
     justes = [r for r in cal if r.correct]
     if justes:
-        print(f"FIRM_NAME_MARGIN >= {min(r.margin_name for r in justes):.4f}   "
-              f"(plus petite marge de nom parmi les {len(justes)} réponses justes)")
+        plancher = min(r.margin_name for r in justes)
+        if negatifs:
+            plancher = max(plancher, max(r.margin_name for r in negatifs) + 0.0001)
+        print(f"FIRM_NAME_MARGIN >= {plancher:.4f}   "
+              f"(plancher des {len(justes)} réponses justes, relevé au-dessus des négatifs)")
 
     # FALLBACK_SCORE sépare « un crop a marché » de « aucun crop n'a marché ».
     # Le repli photo-entière ne doit se déclencher que sous le pire vrai crop.

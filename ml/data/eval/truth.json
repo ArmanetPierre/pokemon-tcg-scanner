@@ -5,7 +5,10 @@
     "ce_dont_test_est_vraiment_du_hold-out": "Les seuils de confiance FIRM_ID_MARGIN et FIRM_NAME_MARGIN ont été fixés alors que seule la collection 1 existait, et n'ont pas bougé depuis (vérifiable : ils datent de a240b84, la collection 2 est arrivée en 99ba7d2). Pour EUX, la collection 2 est un vrai jeu de test.",
     "ce_dont_test_n_est_PAS_du_hold-out": "MIN_QUAD_AREA, MIN_MULTI_QUAD_AREA et SHAPE_BUCKET ont été introduits dans 99ba7d2, le commit qui ajoute la collection 2 : ils ont donc été réglés en voyant ces photos. Toute précision de détection mesurée sur le split test est optimiste. Le dire est le but de ce bloc.",
     "regle": "Ne plus jamais régler quoi que ce soit en regardant le split test. Une constante ajustée sur ces photos exige de reverser la collection concernée en calibration et d'aller chercher de nouvelles photos.",
-    "prochaine_etape": "Le banc a besoin d'un 3e lot, jamais vu, pour redonner un hold-out aux paramètres de détection. Viser 40+ photos, d'autres appareils, et des cartes d'avant Sun & Moon — 47 % de l'index en relève et 0 photo du banc les couvre."
+    "prochaine_etape": "Le banc a besoin d'un 3e lot, jamais vu, pour redonner un hold-out aux paramètres de détection. Viser 40+ photos, d'autres appareils, et des cartes d'avant Sun & Moon — 47 % de l'index en relève et 0 photo du banc les couvre.",
+    "lot_3_regle_de_split": "3e lot (IMG_5121-5134), ajouté le 12 août 2026. Règle FIXÉE AVANT toute mesure. Les NÉGATIFS vont majoritairement en calibration (4 sur 6) : c'est précisément ce qui manquait — les 21 photos de calibration avaient toutes une bonne réponse, donc le comportement de refus n'était calibré sur rien. Les 2 restants vont en test pour pouvoir le vérifier. Les CARTES RÉELLES vont toutes en test : c'est une population fraîche, et elle rend aux paramètres de détection le hold-out qu'ils avaient perdu en 99ba7d2.",
+    "lot_3_a_confirmer": "IMG_5122 est une carte CORÉENNE 075/094. Son tirage est absent de l'index, qui est anglais — vérifié : le seul 75/94 anglais est Archaludon me2-75, illustration et PV différents. Mais si cette illustration a une jumelle anglaise sous un autre numéro, alors une identification par l'image serait défendable et cette entrée serait injuste. À revoir si le cas se présente.",
+    "lot_3_verite_terrain": "Établie en lisant les cartes, jamais en interrogeant le système. Deux pièges rencontrés : le bandeau d'IMG_5121 est lu en MIROIR (104/084 PBL, secrète de Pitch Black = Brave Bangle me5-104) ; et « Muciole » est Volbeat (pokédex 0313) tandis que « Lumivole » est Illumise (0314), soit l'inverse de l'intuition. IMG_5127 a été confirmée non par son numéro, illisible, mais par son code collecteur QY7-613-RNZ, ses attaques Sniff Out / Quick Blow, ses 50 PV et son illustration, tous identiques à ex14-52."
   },
   "photos": {
     "sample/IMG_5017.jpeg": {
@@ -314,6 +317,147 @@
         "dos"
       ],
       "split": "test"
+    },
+    "sample/IMG_5121.jpeg": {
+      "card_id": "me5-104",
+      "fr": "Bracelet Vaillant 104/084 PBL",
+      "conditions": [
+        "etagere",
+        "fond_charge",
+        "incline",
+        "loin",
+        "pochette"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5122.jpeg": {
+      "card_id": null,
+      "fr": "carte coréenne 075/094",
+      "conditions": [
+        "coreen",
+        "hors_index",
+        "loin",
+        "bois"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5123.jpeg": {
+      "card_id": "me5-104",
+      "fr": "Bracelet Vaillant 104/084 PBL",
+      "conditions": [
+        "sol",
+        "sombre",
+        "incline",
+        "pochette"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5124.jpeg": {
+      "card_id": null,
+      "fr": "flou extrême, illisible à l'œil",
+      "conditions": [
+        "flou"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5125.jpeg": {
+      "card_id": "me1-1",
+      "fr": "Bulbizarre 001/132 MEG",
+      "conditions": [
+        "classeur",
+        "reflet"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5126.jpeg": {
+      "card_id": "svp-56",
+      "fr": "Dracaufeu ex 056 SVP",
+      "conditions": [
+        "pochette",
+        "reflet",
+        "pivote"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5127.jpeg": {
+      "card_id": "ex14-52",
+      "fr": "Dynavolt 052/100 Crystal Guardians (2006)",
+      "conditions": [
+        "classeur",
+        "ancienne",
+        "reflet"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5128.jpeg": {
+      "card_id": "sv6-9",
+      "fr": "Muciole 009/167 TWM",
+      "conditions": [
+        "classeur",
+        "pivote",
+        "voisines"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5129.jpeg": {
+      "card_id": "sv6-10",
+      "fr": "Lumivole 010/167 TWM",
+      "conditions": [
+        "classeur",
+        "pivote",
+        "voisines"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5130.jpeg": {
+      "card_id": "sv5-43",
+      "fr": "Sharpedo 043/162 TEF",
+      "conditions": [
+        "classeur",
+        "reflet",
+        "pivote"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5131.jpeg": {
+      "card_id": null,
+      "fr": "carte One Piece (Eustass Kidd)",
+      "conditions": [
+        "autre_jeu",
+        "main",
+        "hors_index"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5132.jpeg": {
+      "card_id": null,
+      "fr": "carte One Piece (Wiper)",
+      "conditions": [
+        "autre_jeu",
+        "main",
+        "hors_index"
+      ],
+      "split": "calibration"
+    },
+    "sample/IMG_5133.jpeg": {
+      "card_id": null,
+      "fr": "carte One Piece (Sakazuki)",
+      "conditions": [
+        "autre_jeu",
+        "main",
+        "hors_index"
+      ],
+      "split": "test"
+    },
+    "sample/IMG_5134.jpeg": {
+      "card_id": null,
+      "fr": "pochon porte-cartes, Pokémon dessiné dessus",
+      "conditions": [
+        "non_carte",
+        "main",
+        "pochette"
+      ],
+      "split": "calibration"
     }
   },
   "_multi": {

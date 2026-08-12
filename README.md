@@ -6,10 +6,13 @@ l'appareil**, destinée à une app iOS.
 > En anglais : [`OVERVIEW.md`](OVERVIEW.md) — architecture, mesures, pièges et
 > limites, en un seul document.
 
-**État actuel : 31 identifications correctes sur 31 photos iPhone réelles** —
-soit, sur un banc de cette taille, **une précision démontrée d'au moins 89 %**
-(IC de Wilson à 95 %). Les photos viennent de deux collections photographiées
-par deux personnes (cartes françaises, index anglais, conditions ordinaires —
+**État actuel : 35 identifications correctes sur 39 photos iPhone réelles**
+(89,7 %, IC de Wilson à 95 % : 76-96 %). Le banc annonçait 31/31 jusqu'à ce
+qu'un troisième lot — cartes anciennes, cadrages ratés, et sept photos sans
+bonne réponse possible — le ramène à cette valeur. Ce lot a aussi produit
+**trois attributions fermes et fausses**, dont une sur un flou que personne ne
+peut identifier : voir `docs/audit-ml.md` §0. Les photos viennent de trois
+collections photographiées par plusieurs personnes (cartes françaises, index anglais, conditions ordinaires —
 contre-jour, pochette, fond chargé, cartes inclinées, et un second lot
 entièrement en paysage). Une 32ᵉ photo montre un dos de carte : la chaîne répond
 « incertain », ce qui est la bonne réponse. Mesuré avec le modèle Core ML
@@ -23,6 +26,8 @@ chaîne qui identifie, pas le modèle seul :
 | photo entière, sans détection ni orientation | 4/31 (13 %, IC95 5-29) |
 | + détection, filtrage, orientation → **similarité seule** | 26/31 (84 %, IC95 67-93) |
 | + lecture du numéro imprimé → **chaîne complète** | 31/31 (100 %, IC95 89-100) |
+
+*(Ablation mesurée sur les 32 photos d'origine ; à refaire sur le banc étendu.)*
 
 Le cadrage vaut 22 identifications, l'embedding ne travaille que sur ce qu'on
 lui donne, et la lecture du numéro imprimé en rattrape 5 de plus. Reproductible

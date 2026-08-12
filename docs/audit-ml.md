@@ -36,6 +36,78 @@ Trois chiffres résument le diagnostic, tous mesurés dans cet audit :
 
 ---
 
+## 0. Ce qu'un troisième lot de photos a changé (12 août 2026)
+
+**Le 31/31 était une propriété de la population testée, pas du système.**
+
+Quatorze photos ont été ajoutées : cartes anciennes, cadrages ratés, et surtout
+**sept négatifs** — trois cartes One Piece, une carte coréenne, un flou
+illisible, un pochon porte-cartes, un dos de carte. Le banc passe de 32 à 46
+photos. Le résultat :
+
+| | avant (32 photos) | après (46 photos) |
+|---|---:|---:|
+| top-1 | 31/31 (100 %, IC95 89-100) | **35/39 (89,7 %, IC95 76-96)** |
+| top-1 sur le seul split test | 10/10 | **14/18 (77,8 %)** |
+| verdicts fermes justes | 30/30 | **33/35** |
+| refus corrects | 1/1 | **6/7** |
+| AURC | 0,000 | **0,101** |
+
+**Trois faux positifs fermes**, là où il n'y en avait aucun :
+
+- `IMG_5121` — la carte est petite dans une étagère encombrée, aucun
+  quadrilatère ne l'isole, le **repli photo-entière** l'emporte et affirme
+  `sv1-250` avec une marge de 0,0676. La bonne réponse n'est même pas dans le
+  top-5. La même carte, mieux cadrée (`IMG_5123`), sort en top-1.
+- `IMG_5127` — Dynavolt, Crystal Guardians **2006**, la première carte
+  pré-Sun & Moon du banc. Rang 2, et `dpp-DP54` affirmé fermement. C'est
+  exactement le décrochage que le banc synthétique annonçait pour les ères
+  anciennes, confirmé sur une vraie photo.
+- `IMG_5124` — un flou de bougé qu'**aucun humain ne peut identifier**, annoncé
+  fermement.
+
+Et la précision à 25 % de couverture (80 %) est **plus basse** qu'à 100 %
+(89,7 %) : sur cette population, trier par la marge est pire que ne pas trier.
+Le signal de confiance n'est pas seulement insuffisant, il est trompeur.
+
+**Le seuil ne peut pas être réparé par recalibration.** Avec les négatifs enfin
+présents en calibration, `evaluate_real.py --calibrate` donne la mesure exacte
+du problème : pour que le flou d'`IMG_5124` (marge 0,0557) cesse d'être affirmé,
+`FIRM_ID_MARGIN` doit passer de 0,03 à **0,0558** — ce qui fait tomber les
+verdicts fermes de 21/21 à **6/21**. Bloquer un faux positif coûte 71 % de la
+couverture.
+
+**Une hypothèse testée et réfutée.** Si les négatifs étaient simplement flous ou
+plats, un critère de netteté les écarterait sans rien coûter. Mesuré (variance
+du laplacien sur le crop retenu) : les négatifs vont de 70 à 1 082, les vraies
+cartes de 44 à 6 106 — distributions entièrement superposées. La netteté n'est
+pas le signal manquant. Le crop d'`IMG_5124` est d'ailleurs net : c'est le mur
+derrière la carte qui est dans le plan de mise au point.
+
+**Ce que ça dit du système.** Le refus repose sur une seule grandeur, la marge,
+qui mesure « deux candidats sont-ils proches ? » et non « est-ce que je regarde
+une carte ? ». Ce sont deux questions différentes, et aucun seuil sur la
+première ne répond à la seconde. Aucun seuil de production n'a été modifié : sept
+négatifs ne justifient pas d'amputer 71 % de la couverture. Le chantier qui suit
+est **B2**.
+
+### B2 — Une confiance apprise plutôt qu'un seuil
+**Effort : moyen. C'est désormais le chantier le plus urgent.**
+
+Remplacer la cascade de `if` par une probabilité calibrée sur plusieurs
+signaux — marge d'édition, marge de nom, score absolu, écart-type du crop,
+netteté, surface du quadrilatère, verdict de l'OCR, et **le fait que le repli
+photo-entière ait été employé**, qui à lui seul explique un des trois faux
+positifs. Régression logistique puis calibration isotonique, validée en
+leave-one-out.
+
+*Ce qui manque pour le faire :* des négatifs. Sept, c'est assez pour révéler le
+problème, pas pour entraîner la solution. Il en faudrait **trente à cinquante**,
+variés : d'autres jeux de cartes, des objets rectangulaires (livres, boîtiers,
+téléphones), des cartes hors index, des ratés de cadrage.
+
+---
+
 ## 1. Le protocole d'évaluation est le maillon faible
 
 ### 1.1 n=31 ne mesure pas ce que le README laisse entendre
