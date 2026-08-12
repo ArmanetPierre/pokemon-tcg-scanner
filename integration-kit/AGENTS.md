@@ -4,12 +4,18 @@ Ce kit identifie une carte Pokémon à partir d'une photo, **entièrement sur
 l'appareil**, sans réseau. Il contient le modèle, l'index des 20 512 cartes, et
 la logique de décision validée.
 
-> **Statut mesuré** : 31 identifications correctes sur 31 photos iPhone réelles,
-> issues de deux collections photographiées par deux personnes (cartes
-> françaises, index anglais, conditions ordinaires : contre-jour, pochette, fond
-> chargé, cartes inclinées, et un second lot entièrement en paysage). Une 32ᵉ
-> photo montre un dos de carte : la chaîne répond « incertain », ce qui est la
-> bonne réponse. Mesures faites sur Mac avec le modèle Core ML exporté ici.
+> **Statut mesuré** : 34 identifications correctes sur 39 photos iPhone réelles
+> (87 %, IC95 73-94), issues de trois collections photographiées par plusieurs
+> personnes (cartes françaises, index anglais, conditions ordinaires :
+> contre-jour, pochette, fond chargé, cartes inclinées, classeur, un lot
+> entièrement en paysage). **29 affirmations fermes, dont 28 justes.** Sept
+> autres photos n'ont aucune bonne réponse possible — dos de carte, cartes d'un
+> autre jeu, carte coréenne, pochon porte-cartes, flou illisible — et la chaîne
+> les refuse **toutes les sept**. Mesures sur Mac avec le modèle exporté ici.
+>
+> Le chiffre a baissé depuis `kit-v4`, qui annonçait 31/31 : ce n'est pas une
+> régression, c'est un banc élargi qui mesure enfin ce que le précédent ne
+> voyait pas. Lire `docs/model-card.md` avant d'annoncer une performance.
 >
 > **Ça tourne maintenant sur iPhone.** Portage Swift intégré à une app Expo, mesuré
 > sur iPhone 13 Pro : voir §8. L'encodeur y fait **5,5 ms** sur le Neural Engine.
@@ -35,7 +41,7 @@ la logique de décision validée.
 | `CardEncoder.mlpackage` | 69 Mo | encodeur d'image → vecteur de 512 dimensions |
 | `index.bin` | 21 Mo | 20 512 vecteurs float16, L2-normalisés |
 | `index.json` | 0,2 Mo | forme de `index.bin` + `card_ids` dans l'ordre des lignes |
-| `cards.json` | 4,3 Mo | métadonnées d'affichage, même ordre que l'index |
+| `cards.json` | 5,0 Mo | métadonnées d'affichage + `needs_printed_number`, même ordre que l'index |
 | `encoder_meta.json` | — | géométrie du prétraitement à reproduire |
 | `benchmarks.json` | — | mesures de référence, à comparer aux vôtres (§8) |
 | `test/` | — | fixtures pour vérifier l'intégration (voir §6) |
@@ -118,6 +124,9 @@ parasites (§8).
   cadre et que ses bords sortent de l'image.
   ⚠️ Ne **pas** mettre la photo entière en concurrence systématique : elle vole
   la sélection aux crops légitimes à marge serrée.
+  ⚠️ Si c'est elle qui est retenue, **aucun verdict ferme n'est permis** (§5).
+  Sur 46 photos, ce repli n'a produit aucune identification correcte et
+  exactement un faux positif ferme.
 
 ### 3. Redressement
 
