@@ -97,7 +97,8 @@ def main() -> int:
         inputs=[ct.ImageType(name="image", shape=(1, 3, size, size), scale=scale, bias=bias)],
         outputs=[ct.TensorType(name="embedding")],
         convert_to="mlprogram",
-        compute_precision=ct.precision.FLOAT16 if args.precision == "fp16" else ct.precision.FLOAT32,
+        compute_precision=(ct.precision.FLOAT16 if args.precision == "fp16"
+                           else ct.precision.FLOAT32),
         minimum_deployment_target=ct.target.iOS17,
     )
     mlmodel.short_description = f"Encodeur d'images de cartes Pokémon ({encoder.name})"

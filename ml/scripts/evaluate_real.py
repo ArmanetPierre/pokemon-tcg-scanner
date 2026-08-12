@@ -63,6 +63,30 @@ def load_bgr(path: str) -> np.ndarray | None:
     return cv2.imread(path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
 
 
+class ProjectedEncoder:
+    """Encodeur enveloppé d'une projection apprise (`scripts/train_projection.py`).
+
+    La projection s'applique symétriquement aux requêtes et à l'index. En
+    l'insérant ici plutôt que dans `src/`, le banc peut comparer avec et sans
+    sans qu'aucun code de production ne dépende d'un artefact expérimental.
+    """
+
+    def __init__(self, encoder, matrix: np.ndarray):
+        self._encoder = encoder
+        self._matrix = matrix
+        self.name = f"{getattr(encoder, 'name', 'encoder')}+projection"
+
+    def encode(self, images, **kwargs) -> np.ndarray:
+        vectors = self._encoder.encode(images, **kwargs) @ self._matrix
+        return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+
+
+def apply_projection(index, matrix: np.ndarray) -> None:
+    """Projette l'index sur place, pour que `index.search` reste inchangé."""
+    projected = index.embeddings.astype(np.float32) @ matrix
+    index.embeddings = projected / np.linalg.norm(projected, axis=1, keepdims=True)
+
+
 @dataclass
 class Record:
     """Une photo passée dans la chaîne, sous une configuration donnée."""
@@ -73,6 +97,7 @@ class Record:
     label_fr: str
     predicted: str | None = None
     top_ids: list[str] = field(default_factory=list)
+    top1_score: float = 0.0   # score absolu du meilleur candidat (pour FALLBACK_SCORE)
     margin_id: float = 0.0
     margin_name: float = 0.0
     level: str = "incertain"
@@ -139,6 +164,7 @@ def run_arm(truth: dict, encoder, index, top_k: int, *,
 
         rec.predicted = hits[0].card_id
         rec.top_ids = [h.card_id for h in hits[:top_k]]
+        rec.top1_score = float(hits[0].score)
         records.append(rec)
 
         if verbose and rec.answerable:
@@ -214,6 +240,47 @@ def report(records: list[Record], top_k: int, title: str) -> dict:
     return summary
 
 
+def calibrate(records: list[Record]) -> None:
+    """Propose des seuils à partir du SPLIT DE CALIBRATION seul.
+
+    À lancer après tout changement qui déplace l'échelle des scores — un autre
+    encodeur, une projection apprise, une autre métrique. Les trois constantes
+    de `src/pipeline.py` sont des seuils sur des grandeurs absolues : elles ne
+    survivent pas à un changement d'espace, et les garder telles quelles produit
+    des symptômes trompeurs (le dos de carte annoncé fermement, par exemple)
+    qu'on impute à tort au nouveau modèle.
+
+    Le split test n'est jamais regardé ici : c'est ce qui lui permet de rester
+    une mesure.
+    """
+    cal = [r for r in records if r.split == "calibration" and r.answerable]
+    if not cal:
+        print("\npas de photos de calibration : rien à proposer")
+        return
+
+    print(f"\n{'=' * 74}\nSeuils proposés — calibration seule ({len(cal)} photos)\n{'=' * 74}")
+
+    rc = risk_coverage([r.margin_id for r in cal], [r.correct for r in cal])
+    cov, thr = rc.coverage_at(1.0)
+    print(f"\nFIRM_ID_MARGIN   >= {thr:.4f}   (100 % de précision, {cov:.0%} de couverture)")
+
+    # Marge de nom : plus petite marge observée parmi les photos dont le premier
+    # candidat porte le BON nom. En dessous, le niveau « nom » cesse d'être sûr.
+    justes = [r for r in cal if r.correct]
+    if justes:
+        print(f"FIRM_NAME_MARGIN >= {min(r.margin_name for r in justes):.4f}   "
+              f"(plus petite marge de nom parmi les {len(justes)} réponses justes)")
+
+    # FALLBACK_SCORE sépare « un crop a marché » de « aucun crop n'a marché ».
+    # Le repli photo-entière ne doit se déclencher que sous le pire vrai crop.
+    scores = sorted(r.top1_score for r in justes)
+    if scores:
+        print(f"FALLBACK_SCORE   <  {scores[0]:.4f}   "
+              f"(plus bas score top-1 d'un crop juste ; médiane {np.median(scores):.4f})")
+    print("\nÀ reporter dans src/pipeline.py, puis à revérifier sur le split test —")
+    print("qui n'a servi à rien de ce qui précède.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="mobileclip2-s2", choices=sorted(REGISTRY))
@@ -234,7 +301,47 @@ def main() -> int:
     )
     parser.add_argument("--json", type=Path, help="écrire le résumé en JSON")
     parser.add_argument("--quiet", action="store_true", help="tableaux seuls, sans le détail")
+    parser.add_argument(
+        "--projection", type=Path,
+        help="projection apprise, appliquée aux requêtes ET à l'index",
+    )
+    parser.add_argument(
+        "--calibrate", action="store_true",
+        help="proposer des seuils à partir du split de calibration seul",
+    )
+    # Les trois constantes de src/pipeline.py sont des seuils sur des grandeurs
+    # absolues. Les surcharger ici permet de vérifier une recalibration sans
+    # toucher au code de production tant que le gain n'est pas démontré.
+    parser.add_argument("--firm-id-margin", type=float)
+    parser.add_argument("--firm-name-margin", type=float)
+    parser.add_argument("--fallback-score", type=float)
+    parser.add_argument(
+        "--selection-margin-weight", type=float,
+        help="poids du terme de marge dans selection_score (1 = comportement actuel)",
+    )
     args = parser.parse_args()
+
+    from src import pipeline as pipeline_module
+
+    if args.selection_margin_weight is not None:
+        # selection_score additionne un score et une marge, ce qui suppose
+        # implicitement qu'ils vivent sur la même échelle. Changer d'espace
+        # rompt cette hypothèse sans rien signaler : une projection qui
+        # multiplie les marges par 5 transforme « score + marge » en « marge
+        # seule » — un régime que le projet a mesuré comme défaillant (un crop
+        # plat se détache nettement sur une carte Énergie).
+        weight = args.selection_margin_weight
+        pipeline_module.selection_score = (
+            lambda hits: hits[0].score + weight * (hits[0].score - hits[1].score)
+        )
+        print(f"poids de la marge dans la sélection : {weight}")
+
+    for attr, value in (("FIRM_ID_MARGIN", args.firm_id_margin),
+                        ("FIRM_NAME_MARGIN", args.firm_name_margin),
+                        ("FALLBACK_SCORE", args.fallback_score)):
+        if value is not None:
+            print(f"seuil surchargé : {attr} {getattr(pipeline_module, attr)} -> {value}")
+            setattr(pipeline_module, attr, value)
 
     truth = json.loads(TRUTH.read_text())["photos"]
     if args.coreml:
@@ -245,6 +352,20 @@ def main() -> int:
     else:
         encoder = load_encoder(args.model)
     index = CardIndex(args.model)
+
+    if args.projection:
+        matrix = np.load(args.projection).astype(np.float32)
+        encoder = ProjectedEncoder(encoder, matrix)
+        apply_projection(index, matrix)
+        print(f"projection {matrix.shape} appliquée aux requêtes et à l'index")
+        # FALLBACK_SCORE compare un score de similarité ABSOLU à 0,65. Une
+        # projection change l'échelle de ces scores, donc ce seuil ne veut plus
+        # rien dire : c'est exactement le piège « un seuil n'est pas comparable
+        # entre deux espaces » que le protocole documente. Tant qu'il n'est pas
+        # recalibré, le repli photo-entière se déclenche presque toujours et la
+        # comparaison avec/sans projection n'est pas à configuration égale.
+        print("  ATTENTION : FALLBACK_SCORE (0,65) est un seuil sur un score absolu,")
+        print("  non transposable. À recalibrer avant de conclure sur cette mesure.")
 
     if args.detector == "pipeline":
         # Chaque bras ajoute un étage au précédent : l'écart entre deux lignes
@@ -265,6 +386,8 @@ def main() -> int:
             records = run_arm(truth, encoder, index, args.top_k,
                               verbose=not args.quiet and not args.ablation, **kwargs)
             out[title] = report(records, args.top_k, title)
+            if args.calibrate and kwargs.get("use_band"):
+                calibrate(records)
 
         if args.ablation:
             print(f"\n{'=' * 74}\nCe que chaque étage apporte\n{'=' * 74}")

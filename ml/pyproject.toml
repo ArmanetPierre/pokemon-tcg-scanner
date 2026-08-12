@@ -24,6 +24,17 @@ dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [tool.ruff]
 line-length = 100
+# scripts/audit/ garde la trace des mesures de l'audit ML : des scripts d'analyse
+# à usage unique, écrits en style compressé et volontairement figés dans l'état
+# qui a produit les chiffres de docs/audit-ml.md. Les reformater les rendrait
+# moins fidèles à ce qui a tourné, pour aucun bénéfice de maintenance.
+exclude = ["scripts/audit"]
+
+[tool.ruff.lint]
+# E et F, explicitement : la sélection par défaut de ruff exclut E501, alors que
+# ce projet fixe une longueur de ligne et s'y tient. Sans ce bloc, la CI ne
+# vérifierait pas la règle que pyproject déclare.
+select = ["E", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

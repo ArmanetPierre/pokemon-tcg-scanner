@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.edition import _digit_distance, known_pair, match_edition, read_number_pairs
+from src.edition import _digit_distance, known_pair, match_edition
 from src.encoder import PreprocessSpec, geometric_preprocess
 from src.pipeline import classify_confidence, selection_score
 

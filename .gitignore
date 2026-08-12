@@ -32,3 +32,7 @@ integration-kit/test/*.jpeg
 ml/data/atlas/
 
 .DS_Store
+
+# Projection apprise : artefact expérimental, régénérable par
+# ml/scripts/train_projection.py, et non embarquée (voir docs/audit-ml.md §C).
+ml/data/export/projection.*

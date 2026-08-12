@@ -355,20 +355,94 @@ réglage sur la calibration, et il justifie à lui seul d'avoir séparé les deu
 détection. Il faut un 3ᵉ lot jamais vu — 40+ photos, d'autres appareils, et des
 cartes d'avant Sun & Moon, dont le banc ne contient à ce jour aucun exemplaire.
 
-### C — Tête de projection apprise (le chantier qui change la nature du projet)
-**Effort : moyen. Impact : le plus élevé.**
-Entraîner une projection linéaire 512→512 (ou 512→256, qui diviserait aussi
-l'index par deux) en contrastif — InfoNCE, négatifs durs pris parmi les plus
-proches voisins mesurés au §5 — sur des paires (référence augmentée → référence),
-avec les augmentations du chantier A. Quelques minutes de GPU, export Core ML à
-coût d'inférence nul, aucun changement d'architecture.
-*Pourquoi c'est le bon chantier :* le §4 a montré que la correction non
-supervisée dégrade ; la correction supervisée est la seule qui reste, et elle
-attaque simultanément l'anisotropie, le décalage de domaine et le décrochage
-WotC.
-*Critère de sortie :* mesuré sur les 1 650 requêtes synthétiques **et** sur les
-14 photos de test jamais vues. Objectif : +5 points sur l'ère WotC sans
-régression ailleurs, et similarité seule de 26/31 à 29/31.
+### C — Tête de projection apprise — 🔶 **entraînée, mesurée, pas livrable en l'état**
+**Effort : moyen. Impact : réel, mais bloqué par autre chose que le modèle.**
+
+Livré : `ml/scripts/train_projection.py` entraîne une projection linéaire
+512→512 en InfoNCE sur des paires (scan dégradé → scan), avec des négatifs durs
+pris parmi les plus proches voisins mesurés au §5. Initialisation à l'identité,
+pour que tout écart mesuré soit un effet de l'apprentissage et non du point de
+départ. Sélection sur la validation, jamais sur la dernière époque. Séparation
+**par carte** : 3 076 cartes tenues hors de l'entraînement. Aucune photo réelle
+n'entre dans l'apprentissage.
+
+#### Ce que ça gagne
+
+Banc synthétique, **cartes jamais vues à l'entraînement**, mêmes dégradations
+(n = 1 209) :
+
+| Ère | sans | avec | Δ |
+|---|---:|---:|---:|
+| WotC 1990s | 75,6 % | 80,5 % | +4,9 |
+| WotC 2000s | 84,7 % | 88,1 % | +3,4 |
+| EX | 94,2 % | 95,8 % | +1,6 |
+| DP/Pt | 95,8 % | 95,8 % | = |
+| HGSS | 91,1 % | 97,8 % | **+6,7** |
+| BW | 91,7 % | 98,3 % | **+6,6** |
+| XY | 91,7 % | 95,8 % | +4,1 |
+| SM | 94,2 % | 100 % | +5,8 |
+| SWSH | 90,0 % | 99,2 % | **+9,2** |
+| SV | 95,0 % | 95,0 % | = |
+| promos | 87,5 % | 91,7 % | +4,2 |
+| **TOTAL** | **91,1 %** | **95,2 %** | **+4,1** |
+
+Top-5 : 98,2 % → **99,9 %**. Aucune ère ne régresse.
+
+Sur le banc réel, à configuration corrigée (voir plus bas) : top-1 **31/31
+inchangé**, mais la qualité du **tri** progresse nettement sur le bras
+similarité seule — AURC **0,047 → 0,016**, et la précision de 100 % tient
+jusqu'à **84 % de couverture au lieu de 65 %**. Le bras sans détection passe de
+4/31 à 9/31.
+
+#### Ce que ça a cassé, et ce que ça révèle
+
+Appliquée telle quelle, la projection faisait **tomber la chaîne de 31/31 à
+29/31** et annonçait fermement un dos de carte. Le modèle n'y était pour rien :
+**quatre grandeurs absolues du pipeline ne survivent pas à un changement
+d'espace**, et trois seulement étaient identifiées.
+
+| Constante | Ancien espace | Espace projeté |
+|---|---:|---:|
+| `FIRM_ID_MARGIN` | 0,03 | 0,0698 |
+| `FIRM_NAME_MARGIN` | 0,04 | 0,0222 |
+| `FALLBACK_SCORE` | 0,65 | < 0,4387 |
+| **`selection_score`** | — | **poids de marge ÷ 12** |
+
+La quatrième est la plus intéressante parce qu'elle n'est écrite nulle part :
+`selection_score` calcule `score + (score − score₂)`, ce qui **suppose
+implicitement que score et marge vivent sur la même échelle**. La projection
+multiplie les marges par 5,6 sans toucher aux scores : la formule devient donc
+« marge seule » — précisément le régime que le projet avait mesuré comme
+défaillant. Les deux photos perdues étaient exactement les deux dont
+l'orientation était ambiguë, donc celles où la sélection arbitre entre 0° et
+180°. Rétablir l'équilibre (`--selection-margin-weight 0.08`) les récupère
+toutes les deux.
+
+Seuils reproposés par `evaluate_real.py --calibrate`, **à partir du split de
+calibration seul** — le split test n'a servi à rien de ce qui précède.
+
+#### Pourquoi ce n'est pas livrable
+
+Le dos de carte (`Nothing.jpeg`) passe de « incertain » à « nom » : une
+attribution affirmée là où le système doit se taire. Et ce seuil **ne peut pas
+être calibré honnêtement aujourd'hui** — le split de calibration ne contient
+**aucun exemple négatif** : ses 21 photos ont toutes une bonne réponse. Le seul
+négatif du banc est dans le split test.
+
+Autrement dit : le comportement de refus du système actuel n'est calibré sur
+rien. Qu'il refuse correctement le dos de carte est un heureux hasard des
+seuils, pas une propriété mesurée. Le chantier C ne fait que le rendre visible.
+
+*Condition de livraison :* une dizaine de négatifs dans le split de calibration
+— dos de cartes, non-cartes, cartes hors index, photos floues — puis
+recalibration des quatre grandeurs, puis revérification sur le split test.
+Tant que ce n'est pas fait, la projection reste dans `data/export/`, mesurée et
+non embarquée.
+
+*Reste aussi à faire, si elle est livrée :* replier `W` dans le graphe Core ML
+comme couche finale (coût d'inférence nul) et régénérer `index.bin` avec la même
+matrice — un index et un encodeur désaccordés donneraient des réponses
+plausibles et fausses, ce qui est l'argument du chantier G.
 
 ### D — Enrôlement multi-vues
 **Effort : faible. À faire avant C, pour savoir ce que C doit battre.**
