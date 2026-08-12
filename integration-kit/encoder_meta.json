@@ -3,6 +3,7 @@
   "dim": 512,
   "input_size": 256,
   "precision": "fp16",
+  "encoder_sha256": "sha256:fb5d91737281ad84eafd8b55c56c6e66539c38c137502ef25bc73e26a2061745",
   "preprocess_in_model": true,
   "geometry": {
     "resize_mode": "resize_shortest_then_center_crop",
@@ -10,6 +11,6 @@
     "antialias": true,
     "note": "redimensionner le petit c\u00f4t\u00e9 \u00e0 input_size, puis recadrer au centre \u2014 le haut et le bas d'une carte portrait sont volontairement rogn\u00e9s, l'index est construit ainsi"
   },
-  "parity_min": 0.9891078472137451,
-  "parity_mean": 0.9957494760553042
+  "parity_min": 0.9898848533630371,
+  "parity_mean": 0.9960009977221489
 }
