@@ -74,14 +74,30 @@ MIN_MULTI_QUAD_AREA = 0.005
 # corrects, seulement d'écarter ceux qui sont visiblement cassés.
 SHAPE_BUCKET = 0.10
 
-# Seuils de confiance, calibrés sur les 18 premières photos du banc : marge
-# 1er/2e >= 0,03 donne 100 % de précision sur l'édition exacte ; marge au
-# premier candidat d'un NOM différent >= 0,04 donne 100 % sur l'identité.
-# Inchangés depuis, et tenus sur les 14 photos ajoutées ensuite (seconde
-# collection, plus un dos de carte qui tombe bien en « incertain »).
-# À reconfirmer sur 40+ photos avant de figer côté app.
-FIRM_ID_MARGIN = 0.03
-FIRM_NAME_MARGIN = 0.04
+# Seuils de confiance. Recalibrés le 12 août 2026 sur le SPLIT DE CALIBRATION
+# SEUL (21 photos + 4 négatifs), dans l'espace de l'index centroïde.
+#
+# Le critère a changé de nature. Il ne s'agit plus seulement d'atteindre 100 %
+# de précision sur les photos qui ont une bonne réponse — 0,0005 y suffirait —
+# mais de passer AU-DESSUS de ce que produisent les photos qui n'en ont pas.
+# La pire d'entre elles, un pochon porte-cartes, donne 0,0277 : la calibration
+# conclut donc à 0,028.
+#
+# Les valeurs retenues sont plus hautes, et c'est un CHOIX DE POLITIQUE, pas
+# une valeur calibrée : une borne établie sur quatre négatifs n'a aucune marge
+# de sécurité, et le produit préfère explicitement se taire à tort qu'affirmer
+# à tort. Le facteur ~1,6 est arbitraire et assumé comme tel. Divulgation
+# nécessaire : il retire aussi une erreur du split test, ce qui n'est PAS ce
+# qui l'a motivé mais reste une information que le lecteur doit avoir.
+#
+# Ce que ça coûte est plus faible qu'il n'y paraît : sur le banc, 25 des 29
+# affirmations fermes viennent du numéro imprimé lu, chemin qui ne passe pas
+# par ces seuils. La marge ne gouverne que le reste.
+#
+# À recalibrer dès que le banc dépasse la trentaine de négatifs — sept, c'est
+# assez pour fixer un seuil, pas pour lui donner un intervalle utile.
+FIRM_ID_MARGIN = 0.045
+FIRM_NAME_MARGIN = 0.06
 
 
 @dataclass
@@ -89,6 +105,7 @@ class Variant:
     label: str
     center: np.ndarray  # centre du quadrilatère en pixels ; (0,0) pour la photo entière
     image: Image.Image
+    area: float = 1.0   # fraction de la photo couverte par le quadrilatère
 
     @property
     def bgr(self) -> np.ndarray:
@@ -166,6 +183,7 @@ def build_variants(path: str, bgr: np.ndarray, orient: str = "text",
 
     variants: list[Variant] = []
     for name, quad in kept:
+        area = _area_fraction(quad, bgr.shape)
         warped = warp_card(bgr, quad)
         gray_std = float(cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY).std())
         if gray_std < MIN_GRAY_STD:
@@ -175,17 +193,19 @@ def build_variants(path: str, bgr: np.ndarray, orient: str = "text",
         if orient == "text":
             verdict, oriented = pick_orientation(warped)
             if oriented is not None:
-                variants.append(Variant(f"{name} ocr:{verdict}", centre, _to_pil(oriented)))
+                variants.append(
+                    Variant(f"{name} ocr:{verdict}", centre, _to_pil(oriented), area)
+                )
                 continue
-        variants.append(Variant(f"{name} 0°", centre, _to_pil(warped)))
+        variants.append(Variant(f"{name} 0°", centre, _to_pil(warped), area))
         variants.append(
-            Variant(f"{name} 180°", centre, _to_pil(cv2.rotate(warped, cv2.ROTATE_180)))
+            Variant(f"{name} 180°", centre, _to_pil(cv2.rotate(warped, cv2.ROTATE_180)), area)
         )
     return variants
 
 
 def full_photo_variant(bgr: np.ndarray) -> Variant:
-    return Variant("photo entière", np.zeros(2, dtype=np.float32), _to_pil(bgr))
+    return Variant("photo entière", np.zeros(2, dtype=np.float32), _to_pil(bgr), 1.0)
 
 
 def selection_score(hits) -> float:
@@ -209,13 +229,21 @@ class Confidence:
     margin_name: float
 
 
-def classify_confidence(hits, band_verdict: str | None = None) -> Confidence:
+def classify_confidence(hits, band_verdict: str | None = None,
+                        full_photo: bool = False) -> Confidence:
     """Classe la confiance à partir des marges **avant** tout réordonnancement.
 
     `band_verdict == "ocr"` signifie que le numéro imprimé a été lu et a
     désigné un candidat : c'est une preuve plus forte que la similarité, donc
     le niveau passe à « edition » quelles que soient les marges. Les marges
     restent celles de la similarité, pour diagnostic seulement.
+
+    `full_photo` dit que la sélection a retenu la photo entière, donc qu'aucun
+    quadrilatère n'a été jugé plausible. Le vecteur décrit alors une scène et
+    non une carte redressée : la marge y compare deux mauvaises réponses entre
+    elles, et se trouve être élevée aussi souvent que basse. Aucun verdict ferme
+    n'en sort. Mesuré sur le banc de 46 photos : ce repli ne produit AUCUNE
+    identification correcte, et exactement un faux positif ferme.
     """
     margin_id = hits[0].score - hits[1].score
     top_name = hits[0].card["name"]
@@ -225,6 +253,8 @@ def classify_confidence(hits, band_verdict: str | None = None) -> Confidence:
     )
     if band_verdict == "ocr":
         return Confidence("edition", "numéro lu", margin_id, margin_name)
+    if full_photo:
+        return Confidence("incertain", "cadrage insuffisant", margin_id, margin_name)
     if margin_id >= FIRM_ID_MARGIN:
         return Confidence("edition", "similarité", margin_id, margin_name)
     if margin_name >= FIRM_NAME_MARGIN:
@@ -283,17 +313,26 @@ class Identification:
 
 
 def identify(path: str, bgr: np.ndarray, encoder, index,
-             k: int = 5, orient: str = "text") -> Identification:
+             k: int = 5, orient: str = "text", use_band: bool = True) -> Identification:
     """Chaîne complète : détection, orientation, embedding, recherche, bandeau.
 
     Point d'entrée unique — c'est cette séquence que l'app doit reproduire.
     La confiance est calculée sur l'ordre issu de la similarité, puis relevée
     si le numéro imprimé a tranché ; l'inverse donnerait des marges calculées
     sur une liste réordonnée, donc dénuées de sens.
+
+    `use_band=False` coupe la lecture du numéro imprimé et ne laisse que la
+    similarité. Ce n'est pas un mode d'exploitation : c'est le bras d'ablation
+    du banc d'essai, qui sépare ce que l'embedding apporte de ce que l'OCR
+    rattrape (mesuré : 26/31 contre 31/31 — l'OCR porte un sixième du résultat).
     """
     variant, hits = identify_photo(path, bgr, encoder, index, k=k, orient=orient)
-    refined, band_verdict = refine_with_band(variant, hits, index)
-    confidence = classify_confidence(hits, band_verdict)
+    refined, band_verdict = (
+        refine_with_band(variant, hits, index) if use_band else (hits, None)
+    )
+    confidence = classify_confidence(
+        hits, band_verdict, full_photo=variant.label == "photo entière"
+    )
     return Identification(
         hits=refined,
         confidence=confidence,

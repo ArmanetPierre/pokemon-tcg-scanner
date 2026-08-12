@@ -4,12 +4,18 @@ Ce kit identifie une carte Pokémon à partir d'une photo, **entièrement sur
 l'appareil**, sans réseau. Il contient le modèle, l'index des 20 512 cartes, et
 la logique de décision validée.
 
-> **Statut mesuré** : 31 identifications correctes sur 31 photos iPhone réelles,
-> issues de deux collections photographiées par deux personnes (cartes
-> françaises, index anglais, conditions ordinaires : contre-jour, pochette, fond
-> chargé, cartes inclinées, et un second lot entièrement en paysage). Une 32ᵉ
-> photo montre un dos de carte : la chaîne répond « incertain », ce qui est la
-> bonne réponse. Mesures faites sur Mac avec le modèle Core ML exporté ici.
+> **Statut mesuré** : 34 identifications correctes sur 39 photos iPhone réelles
+> (87 %, IC95 73-94), issues de trois collections photographiées par plusieurs
+> personnes (cartes françaises, index anglais, conditions ordinaires :
+> contre-jour, pochette, fond chargé, cartes inclinées, classeur, un lot
+> entièrement en paysage). **29 affirmations fermes, dont 28 justes.** Sept
+> autres photos n'ont aucune bonne réponse possible — dos de carte, cartes d'un
+> autre jeu, carte coréenne, pochon porte-cartes, flou illisible — et la chaîne
+> les refuse **toutes les sept**. Mesures sur Mac avec le modèle exporté ici.
+>
+> Le chiffre a baissé depuis `kit-v4`, qui annonçait 31/31 : ce n'est pas une
+> régression, c'est un banc élargi qui mesure enfin ce que le précédent ne
+> voyait pas. Lire `docs/model-card.md` avant d'annoncer une performance.
 >
 > **Ça tourne maintenant sur iPhone.** Portage Swift intégré à une app Expo, mesuré
 > sur iPhone 13 Pro : voir §8. L'encodeur y fait **5,5 ms** sur le Neural Engine.
@@ -35,7 +41,7 @@ la logique de décision validée.
 | `CardEncoder.mlpackage` | 69 Mo | encodeur d'image → vecteur de 512 dimensions |
 | `index.bin` | 21 Mo | 20 512 vecteurs float16, L2-normalisés |
 | `index.json` | 0,2 Mo | forme de `index.bin` + `card_ids` dans l'ordre des lignes |
-| `cards.json` | 4,3 Mo | métadonnées d'affichage, même ordre que l'index |
+| `cards.json` | 5,0 Mo | métadonnées d'affichage + `needs_printed_number`, même ordre que l'index |
 | `encoder_meta.json` | — | géométrie du prétraitement à reproduire |
 | `benchmarks.json` | — | mesures de référence, à comparer aux vôtres (§8) |
 | `test/` | — | fixtures pour vérifier l'intégration (voir §6) |
@@ -118,6 +124,9 @@ parasites (§8).
   cadre et que ses bords sortent de l'image.
   ⚠️ Ne **pas** mettre la photo entière en concurrence systématique : elle vole
   la sélection aux crops légitimes à marge serrée.
+  ⚠️ Si c'est elle qui est retenue, **aucun verdict ferme n'est permis** (§5).
+  Sur 46 photos, ce repli n'a produit aucune identification correcte et
+  exactement un faux positif ferme.
 
 ### 3. Redressement
 
@@ -276,8 +285,29 @@ Les vecteurs sont déjà normalisés (norme 1,0000 ± 0,0001). Convertir en
 `Float32` pour le produit matriciel, ou utiliser directement les fonctions
 half-precision d'Accelerate.
 
-Le passage float32 → float16 a été vérifié : **top-1 identique sur 200/200**
-requêtes de contrôle.
+Le passage float32 → float16 est vérifié à chaque export, sur 200 requêtes de
+contrôle : **top-1 identique sur 199/200, top-5 sur 193/200**. Le réordonnancement
+résiduel concerne des voisinages déjà indécidables — des cartes séparées par
+moins que le bruit de quantification, qui relèvent de toute façon de la lecture
+du numéro (voir `needs_printed_number` ci-dessous).
+
+### Vérifier que l'index et le modèle vont ensemble
+
+`index.json` porte `encoder_sha256`, l'empreinte du `CardEncoder.mlpackage` qui
+a produit les vecteurs. La même valeur est dans `encoder_meta.json`.
+
+**L'app doit les comparer au démarrage et refuser de continuer si elles
+diffèrent.** Un index construit avec un encodeur et interrogé par un autre ne
+lève aucune erreur : la recherche rend des voisins, les scores restent dans leur
+plage habituelle, et les réponses sont plausibles et fausses. C'est le même
+genre de panne silencieuse que la géométrie de prétraitement (§3), et le seul
+qui n'était pas outillé.
+
+```swift
+guard indexMeta.encoderSHA256 == encoderMeta.encoderSHA256 else {
+    throw KitError.mismatchedArtifacts   // ne pas dégrader : refuser
+}
+```
 
 ### `cards.json`
 
@@ -287,12 +317,45 @@ Tableau aligné sur `index.json.card_ids`, un objet par carte :
 {
   "id": "me5-36", "name": "Litwick", "number": "36", "rarity": "Common",
   "set_id": "me5", "set_name": "Pitch Black", "set_printed_total": 84,
-  "image_small": "https://images.pokemontcg.io/me5/36.png"
+  "image_small": "https://images.pokemontcg.io/me5/36.png",
+  "needs_printed_number": false
 }
 ```
 
 `image_small` est une URL distante — la seule chose du kit qui demande le
 réseau, et uniquement pour afficher la vignette officielle.
+
+### `needs_printed_number` — le plafond, connu d'avance
+
+**4 787 cartes sur 20 512 (23,3 %) ne peuvent pas être tranchées par l'image
+seule.** Ce sont des réimpressions de la même illustration : 884 d'entre elles
+ont dans l'index un voisin à 0,99 ou plus, et pour celles-là aucune photo, aussi
+bonne soit-elle, ne produira une marge exploitable.
+
+La proportion dépend fortement de l'époque :
+
+| Série | Cartes | Numéro requis |
+|---|---:|---:|
+| Base | 494 | **78,3 %** |
+| E-Card | 529 | 29,3 % |
+| Sword & Shield | 3 667 | 26,7 % |
+| Sun & Moon | 2 973 | 23,1 % |
+| Scarlet & Violet | 3 595 | 16,9 % |
+| Diamond & Pearl | 900 | 13,6 % |
+| Platinum | 517 | 7,5 % |
+
+L'intérêt du champ est qu'il est disponible **avant** de répondre. Quand le
+premier candidat le porte, une marge serrée n'est pas une anomalie mais le
+comportement attendu : l'app peut aller chercher le bandeau, demander un cadrage
+du bas de la carte, ou proposer les éditions candidates — plutôt que d'afficher
+un « incertain » qu'elle aurait pu prévoir.
+
+L'étiquette est **mesurée** (`ml/scripts/label_discriminability.py` rejoue des
+dégradations synthétiques de chaque carte contre l'index entier), pas déduite
+d'une règle. Deux limites : les requêtes sont synthétiques, donc c'est un
+indicateur de difficulté et non une prédiction d'échec ; et l'étiquette est
+calculée dans l'espace de l'index courant, donc périmée si l'encodeur change —
+d'où l'empreinte livrée avec.
 
 ---
 
@@ -306,15 +369,41 @@ Deux marges, calculées sur le classement par similarité :
 
 | Condition | Niveau | Affichage suggéré |
 |---|---|---|
+| la sélection a retenu la **photo entière** | `incertain` | demander un cadrage sur la carte |
 | le numéro a été lu sur la carte (§7) | `edition` | carte et set fermes |
-| marge d'édition ≥ 0,03 | `edition` | carte et set fermes |
-| marge de nom ≥ 0,04 | `nom` | « Primeape — édition à confirmer » |
+| marge d'édition ≥ `firm_id_margin` | `edition` | carte et set fermes |
+| marge de nom ≥ `firm_name_margin` | `nom` | « Primeape — édition à confirmer » |
 | sinon | `incertain` | proposer le top-5, ou inviter à stabiliser |
 
-Ces seuils sont **calibrés sur 18 photos d'un seul joueur**. Ils tiennent sur ce
-jeu (aucune sur-vente : les deux vrais échecs étaient classés « incertain »),
-mais méritent d'être reconfirmés sur un échantillon plus large avant d'être
-figés.
+**Ne pas coder les seuils en dur.** Ils sont dans `index.json`, sous
+`confidence`, et ils **dépendent de l'index** : deux stratégies d'enrôlement
+n'ont pas la même échelle de marges. Une app qui garderait ses anciennes valeurs
+face à un index régénéré affirmerait à tort, sans qu'aucune erreur ne soit
+levée — exactement le problème que l'empreinte de l'encodeur évite pour le
+modèle (§4).
+
+```swift
+let seuils = meta.confidence          // firm_id_margin, firm_name_margin
+```
+
+Valeurs de l'index courant : **0,045** et **0,06**. Elles sont plus hautes que
+ce que la calibration exige (0,028) : c'est un choix de politique — le produit
+préfère se taire à tort qu'affirmer à tort — et une borne établie sur quatre
+négatifs n'a aucune marge de sécurité.
+
+**Le repli photo-entière ne doit jamais produire de verdict ferme**
+(`no_firm_verdict_on_full_photo`). Quand aucun quadrilatère n'est retenu, le
+vecteur décrit une scène et non une carte redressée : la marge y compare deux
+mauvaises réponses entre elles. Mesuré sur 46 photos, ce repli n'a produit
+**aucune identification correcte** et exactement un faux positif ferme.
+
+**Ce que ces seuils valent, et ce qu'ils ne valent pas.** Sur le banc de 46
+photos : 29 affirmations fermes, dont 28 justes, et les 7 photos sans bonne
+réponse (dos de carte, cartes d'un autre jeu, carte coréenne, pochon, flou
+illisible) toutes refusées. Mais le système **ne sait pas dire « ceci n'est pas
+une carte Pokémon »** : il répond « incertain », ce qui invite l'utilisateur à
+reprendre une photo qui ne marchera jamais. Prévoir un message de sortie après
+deux ou trois refus consécutifs.
 
 Pourquoi deux niveaux : la confusion vit presque entièrement *à l'intérieur du
 même nom de carte* — plusieurs tirages de la même illustration dans des sets

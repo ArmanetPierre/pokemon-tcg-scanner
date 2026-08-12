@@ -1,0 +1,63 @@
+# Ce que la CI vérifie, et ce qu'elle ne peut pas vérifier.
+#
+# VÉRIFIÉ ICI     les 36 tests d'invariants et le lint.
+#
+# NON VÉRIFIABLE  le banc de photos réelles (les photos sont hors dépôt), le banc
+#                 synthétique (5,5 Go d'images de référence) et la parité
+#                 PyTorch/Core ML (demande le modèle exporté). Ces trois-là
+#                 restent manuels, et le README dit lesquels lancer avant de
+#                 publier un index.
+#
+# La tentation serait de faire tourner le banc en CI en téléchargeant l'index
+# depuis la release. Ce serait tester la release, pas le code — et masquer le
+# fait que la seule mesure qui compte demande des photos que personne ne peut
+# mettre dans un dépôt public.
+#
+# Pourquoi macOS : les tests n'appellent jamais Vision, mais ils importent
+# src.edition et src.pipeline, qui font `import Vision` au niveau module. Un
+# runner Linux échouerait à l'import. Découpler la logique pure (table de
+# confusion OCR, distance chiffre à chiffre, classement de confiance) des
+# modules qui parlent aux frameworks Apple rendrait ces tests exécutables
+# partout et la CI trois fois plus rapide — c'est une amélioration identifiée,
+# pas encore faite.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  invariants:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache des paquets
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('ml/pyproject.toml') }}
+
+      # torch est nécessaire parce que src/encoder.py l'importe au niveau module,
+      # et que les tests de géométrie du prétraitement passent par lui. La
+      # version CPU suffit : aucun test n'exécute le modèle.
+      - name: Dépendances
+        run: |
+          pip install --upgrade pip
+          pip install pytest ruff numpy pillow opencv-python-headless pyobjc-framework-Vision pyobjc-framework-Quartz
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install open_clip_torch transformers
+
+      - name: Tests des invariants
+        working-directory: ml
+        run: python -m pytest -q
+
+      - name: Lint
+        working-directory: ml
+        run: ruff check src scripts tests

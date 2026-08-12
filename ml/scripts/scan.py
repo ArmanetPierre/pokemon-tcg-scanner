@@ -83,7 +83,8 @@ def main() -> int:
                 )
                 continue
             print(f"  [{variant_label}] {describe(hits, confidence)}")
-            print(f"      marges : édition {confidence.margin_id:.4f} · nom {confidence.margin_name:.4f}")
+            print(f"      marges : édition {confidence.margin_id:.4f} · "
+                  f"nom {confidence.margin_name:.4f}")
             if confidence.level != "edition":
                 for rank, hit in enumerate(hits[1:args.top_k], 2):
                     print(

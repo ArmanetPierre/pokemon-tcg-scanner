@@ -5,14 +5,36 @@ no network call. Point a camera at a card and get back which card it is, which
 set it was printed in, and how much that answer can be trusted.
 
 The rest of this repository is in French; this file is the English way in.
+`docs/model-card.md` is the citable summary: intended use, what is out of scope,
+metrics with confidence intervals, known failures, and published negative
+results.
 
-**Status.** 31 correct identifications out of 31 real iPhone photographs, across
-two collections photographed by two people (French cards against an English
-index, in ordinary conditions — backlight, sleeves, cluttered backgrounds, tilted
-cards, and a second batch shot entirely in landscape), measured on a Mac. A 32nd
-photograph shows the back of a card: the chain answers "uncertain", which is the
-correct answer. It now also runs on an iPhone, inside a real app, where the
+**Status.** 35 correct identifications out of 39 real iPhone photographs
+(89.7 %, Wilson 95 % interval 76-96 %). The bench read 31/31 until a third batch
+— older cards, botched framing, and seven photographs with **no correct answer
+at all** — brought it down to this. That batch also produced **three confident
+wrong attributions**, one of them on a motion blur no human can identify. The
+photographs come from three collections shot by several people (French cards
+against an English index, in ordinary conditions — backlight, sleeves, cluttered
+backgrounds, tilted cards, binder pages, one batch entirely in landscape),
+measured on a Mac. It also runs on an iPhone, inside a real app, where the
 encoder takes **5.5 ms** on the Neural Engine.
+
+Do not read the headline number without `docs/model-card.md`: what the system
+must not be used for is as measured as what it does.
+
+**What each stage contributes**, by ablation on that same bench:
+
+| Configuration | Top-1 |
+|---|---|
+| whole photograph, no detection or orientation | 5/39 (13 %, CI95 6-27) |
+| + detection, filtering, orientation → **similarity alone** | 29/39 (74 %, CI95 59-85) |
+| + reading the printed number → **full chain** | 35/39 (90 %, CI95 76-96) |
+
+Framing is worth 24 identifications; the embedding only ever works on what it is
+handed; reading the printed collector number recovers 6 more. The headline
+number is a property of the *chain*, not of the model — reach for a better
+encoder and you are optimising the stage that contributes least.
 
 ---
 
@@ -83,10 +105,14 @@ would then behave as universal attractors — every poor photograph would resemb
 them. Availability is therefore decided on a content digest, in
 `ml/src/fallback_images.py`.
 
-**Being in the index is not the same as being tested.** Every photograph on the
-bench is of a recent card, and **47 % of the index predates Sun & Moon**, where
-borders, art frames and footer layouts differ substantially. Coverage is a count;
-it is not evidence.
+**Being in the index is not the same as being tested.** The bench holds exactly
+**one** card older than Sun & Moon, while **47 % of the index predates it** —
+and that one card is among the failures, confidently misattributed. Coverage is
+a count; it is not evidence.
+
+The synthetic bench measures the blind spot the real one cannot reach: over
+1 209 queries on held-out cards, the WotC era scores **75.6 %** against **95.8 %**
+for Diamond & Pearl — twenty points of spread.
 
 Two numbers explain much of the design:
 
@@ -136,7 +162,7 @@ tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 | `CardEncoder.mlpackage` | 69 MB | image → 512-dimension vector |
 | `index.bin` | 21 MB | 20 512 float16 vectors, L2-normalised |
 | `index.json` | 0.2 MB | index shape and `card_ids`, in row order |
-| `cards.json` | 4.1 MB | display metadata, aligned with the index |
+| `cards.json` | 5.0 MB | display metadata, aligned with the index, incl. `needs_printed_number` |
 
 The iOS app fetches this for you: `npm run sync:model`.
 
@@ -148,9 +174,11 @@ index, and the test photographs.
 
 ```bash
 cd ml
-python3.11 -m venv .venv && .venv/bin/pip install -e .
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.lock.txt   # the exact versions measured
+.venv/bin/pip install -e . --no-deps
 
-.venv/bin/python scripts/build_metadata.py     # metadata, from pokemon-tcg-data
+.venv/bin/python scripts/build_metadata.py     # metadata, at the pinned revision
 .venv/bin/python scripts/add_missing_cards.py  # sets that source lacks, from TCGdex
 .venv/bin/python scripts/download_images.py    # high-resolution images, ~15 min
 .venv/bin/python scripts/build_embeddings.py   # vector index, ~6 min on an M3
@@ -166,10 +194,15 @@ actually be added, and which have no image anywhere.
 ## Checking it
 
 ```bash
-.venv/bin/python scripts/evaluate_real.py           # the bench, on PyTorch
-.venv/bin/python scripts/evaluate_real.py --coreml  # on the exported model
-.venv/bin/python scripts/scan.py photo.jpeg         # identify one photograph
+.venv/bin/python scripts/evaluate_real.py            # the bench, on PyTorch
+.venv/bin/python scripts/evaluate_real.py --ablation # what each stage contributes
+.venv/bin/python scripts/evaluate_real.py --coreml   # on the exported model
+.venv/bin/python scripts/scan.py photo.jpeg          # identify one photograph
 ```
+
+Every rate is reported per split (`calibration` / `test`) with its Wilson
+interval, and confidence as a risk-coverage curve with its AURC. A threshold is
+comparable neither across models nor across metric spaces; a curve always is.
 
 `integration-kit/test/` holds fixtures for validating a port in stages, with
 expected values in `expected.json`. Start with the preprocessing alone: encode
@@ -233,11 +266,29 @@ single card name — several printings of one artwork across different sets. A
 tight margin usually means "right card, unsure which printing", which is worth
 telling someone, and is not the same as not knowing.
 
-These thresholds were calibrated on 18 photographs from one player, and have
-since held unchanged on a second player's 11 photographs plus one photograph of a
-card back — no over-claiming on either, and the card back correctly lands in
-`uncertain`. 32 photographs is still a small sample: two collections, one phone
-model, no organised-play conditions.
+These thresholds were calibrated on the first collection and have not moved
+since; the second player's 11 photographs plus one card back are therefore
+genuine held-out data **for the thresholds** — no over-claiming on either, and
+the card back correctly lands in `uncertain`. They are *not* held out for the
+quadrilateral filters, which were tuned in the same commit that added them; the
+split annotations in `truth.json` say exactly which is which.
+
+**These thresholds are not good enough, and that is measured.** On the widened
+bench, precision at 25 % coverage (80 %) is *lower* than at full coverage
+(89.7 %): sorting by margin is worse than not sorting. AURC is 0.101. Three
+photographs get a firm, wrong answer — including a motion blur that carries a
+larger margin than fifteen of the twenty-one correct identifications.
+
+Raising the threshold does not fix it. To stop that blur being asserted,
+`FIRM_ID_MARGIN` must go from 0.03 to 0.0558, which drops firm verdicts from
+21/21 to **6/21**. Blocking one false positive costs 71 % of coverage. Nothing
+was changed in production on the strength of seven negatives.
+
+The root cause is that refusal rests on a single quantity, the margin, which
+answers "are these two candidates close?" and not "am I even looking at a
+card?". No threshold on the first answers the second. `docs/audit-ml.md` §0
+carries the full measurement and the proposed fix — a confidence learned over
+several signals, which needs thirty to fifty negatives rather than seven.
 
 ---
 

@@ -12,12 +12,45 @@ dependencies = [
     "numpy>=1.26",
     "pillow>=10.0",
     "requests>=2.31",
+    # Détection, redressement et augmentations : src/detect.py, src/augment.py.
+    "opencv-python-headless>=4.9",
+    # Photos iPhone au format HEIC (scripts/evaluate.py).
+    "pillow-heif>=0.15",
+    # Vision et Quartz font tourner la détection de quadrilatères, l'orientation
+    # et les deux passes d'OCR — c'est-à-dire les deux tiers du coût d'une
+    # identification. Le projet cible Apple de bout en bout ; ailleurs, seuls
+    # les tests d'invariants et le socle statistique restent utilisables.
+    "pyobjc-framework-Vision>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]
 # Export iOS. Séparé car coremltools contraint fortement la version de torch :
 # on ne veut pas que cette contrainte bloque le prototypage.
 coreml = ["coremltools>=8.0"]
+# Tests des invariants. Aucun n'a besoin de Vision ni du modèle : ils tournent
+# partout, y compris sur un runner Linux.
+dev = ["pytest>=8.0", "ruff>=0.5"]
+# Exploration visuelle de l'index (scripts/explore_index.py, Embedding Atlas).
+# Lourd et sans rapport avec la chaîne d'identification : à part.
+atlas = ["pandas>=2.0", "scipy>=1.11", "umap-learn>=0.5"]
 
 [tool.ruff]
 line-length = 100
+# scripts/audit/ garde la trace des mesures de l'audit ML : des scripts d'analyse
+# à usage unique, écrits en style compressé et volontairement figés dans l'état
+# qui a produit les chiffres de docs/audit-ml.md. Les reformater les rendrait
+# moins fidèles à ce qui a tourné, pour aucun bénéfice de maintenance.
+exclude = ["scripts/audit"]
+
+[tool.ruff.lint]
+# E et F, explicitement : la sélection par défaut de ruff exclut E501, alors que
+# ce projet fixe une longueur de ligne et s'y tient. Sans ce bloc, la CI ne
+# vérifierait pas la règle que pyproject déclare.
+select = ["E", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Les modules sont importés en `src.x` comme dans les scripts, sans installer
+# le paquet : `pip install -e .` n'expose pas `src/` en tant que tel.
+pythonpath = ["."]

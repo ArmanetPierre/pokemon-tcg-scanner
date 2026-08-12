@@ -13,7 +13,7 @@ Core ML.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import numpy as np
 import torch
@@ -200,7 +200,8 @@ def load_encoder(key: str, device: str | None = None) -> Encoder:
         preprocess = _HFPreprocess(processor)
 
         with torch.inference_mode():
-            dim = model(pixel_values=torch.zeros(1, 3, size, size, device=device)).pooler_output.shape[-1]
+            probe = model(pixel_values=torch.zeros(1, 3, size, size, device=device))
+            dim = probe.pooler_output.shape[-1]
 
     return Encoder(
         name=key,

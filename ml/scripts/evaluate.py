@@ -103,14 +103,18 @@ def resolve_card(folder: str, cards: list[dict]) -> tuple[str | None, str]:
     # vérité terrain silencieusement fausse, donc on refuse.
     elsewhere = [c for c in cards if name_matches(c["name"], name_part)]
     if elsewhere:
-        example = ", ".join(f"{c['id']} ({c['number']}/{c['set_printed_total']})" for c in elsewhere[:3])
-        return None, f"'{name_part}' existe mais pas en {number}/{total} — numéro erroné ? voir {example}"
+        example = ", ".join(
+            f"{c['id']} ({c['number']}/{c['set_printed_total']})" for c in elsewhere[:3]
+        )
+        return None, (f"'{name_part}' existe mais pas en {number}/{total} — "
+                      f"numéro erroné ? voir {example}")
 
     # Nom inconnu de l'index : cas attendu pour une carte française. Le couple
     # numéro/total tranche seul, à condition qu'il soit unique.
     if len(candidates) == 1:
         card = candidates[0]
-        return card["id"], f"nom '{name_part}' absent de l'index (carte FR ?), retenu {card['name']}"
+        return card["id"], (f"nom '{name_part}' absent de l'index (carte FR ?), "
+                            f"retenu {card['name']}")
     listing = ", ".join(f"{c['id']} ({c['name']})" for c in candidates)
     return None, f"{number}/{total} correspond à {len(candidates)} cartes : {listing}"
 
@@ -172,7 +176,8 @@ def main() -> int:
         margin = hits[0].score - hits[1].score
         by_condition[condition_of(path)].append((top1, topk, margin, ids[0], str(path)))
 
-    print(f"{'condition':<12} {'n':>4} {'top-1':>7} {'top-' + str(args.top_k):>7} {'marge moy':>10}")
+    print(f"{'condition':<12} {'n':>4} {'top-1':>7} "
+          f"{'top-' + str(args.top_k):>7} {'marge moy':>10}")
     print("-" * 44)
     all_rows = []
     for cond in list(CONDITIONS) + ["autre"]:
