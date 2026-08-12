@@ -5,6 +5,9 @@ l'appareil**, destinée à une app iOS.
 
 > En anglais : [`OVERVIEW.md`](OVERVIEW.md) — architecture, mesures, pièges et
 > limites, en un seul document.
+>
+> Ce que le système vaut, où il échoue, et ce qu'il ne faut pas lui demander :
+> [`docs/model-card.md`](docs/model-card.md).
 
 **État actuel : 35 identifications correctes sur 39 photos iPhone réelles**
 (89,7 %, IC de Wilson à 95 % : 76-96 %). Le banc annonçait 31/31 jusqu'à ce
@@ -71,7 +74,7 @@ photo → détection du quadrilatère (Vision) → redressement (homographie)
 | `ml/src/` | pipeline, détection, orientation, lecture du bandeau, recherche |
 | `ml/scripts/` | dataset, embeddings, évaluation, exports Core ML et index |
 | `integration-kit/` | doc d'intégration iOS (`AGENTS.md`) et mesures de référence |
-| `docs/` | rapport de tests et plan d'amélioration (pages HTML) |
+| `docs/` | [fiche modèle](docs/model-card.md), [audit ML](docs/audit-ml.md), rapport de tests et plan d'amélioration |
 | `plan-ios.md` | plan d'origine et résultats mesurés |
 
 ## Ce qui n'est pas versionné

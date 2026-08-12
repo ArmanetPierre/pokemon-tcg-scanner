@@ -5,6 +5,9 @@ no network call. Point a camera at a card and get back which card it is, which
 set it was printed in, and how much that answer can be trusted.
 
 The rest of this repository is in French; this file is the English way in.
+`docs/model-card.md` is the citable summary: intended use, what is out of scope,
+metrics with confidence intervals, known failures, and published negative
+results.
 
 **Status.** 31 correct identifications out of 31 real iPhone photographs —
 which on a bench this size demonstrates **at least 89 % precision**, not 100 %
