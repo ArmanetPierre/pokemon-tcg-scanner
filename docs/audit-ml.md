@@ -703,23 +703,22 @@ les sets à numéros imprimés sur trois chiffres.
 Core ML tournent ; les 36 tests et le banc synthétique réduit peuvent tourner
 sur Linux.
 
-### G — Traçabilité et reproductibilité
-**Effort : faible.**
-Hash SHA-256 du `.mlpackage` dans `index.json` et `encoder_meta.json`, vérifié
-au chargement côté app ; verrou de dépendances ; révision épinglée de la source
-de métadonnées ; graine fixée partout.
-
 ### H — Boucle de retour depuis l'app
-**Effort : moyen, dépend de l'app.**
+**Effort : moyen, dépend de l'app. Devenu la voie la plus courte vers B2.**
 Remontée opt-in des photos ayant donné `incertain` ou corrigées par
-l'utilisateur. C'est ce qui fait passer l'évaluation de 31 photos à quelques
-milliers, et c'est la seule proposition dont le gain croît avec le temps.
+l'utilisateur. C'est la seule proposition dont le gain croît avec le temps — et
+depuis le 3ᵉ lot, c'est aussi la façon la plus réaliste de réunir les trente à
+cinquante négatifs que B2 réclame : les refus sont précisément ce que cette
+remontée collecte.
 
-### I — Model card
+### I — Model card — ✅ **fait**
 **Effort : très faible.**
-Rassembler l'existant sous forme citable : données, population testée,
-populations non testées, métriques avec IC, usages déconseillés, résultats
-négatifs (§4).
+
+`docs/model-card.md` : usage prévu, périmètre exclu, métriques avec intervalles,
+défaillances connues, résultats négatifs. La partie qui n'existait nulle part
+avant est **ce qu'il ne faut PAS demander au système** — aucune décision
+d'argent, pas d'inventaire sans relecture, ni japonais ni coréen, ni notation
+d'état ni détection de contrefaçon.
 
 ---
 
@@ -732,7 +731,7 @@ lecture seule sur les données et n'écrivent rien.
 cd ml
 .venv/bin/python scripts/audit/audit_index.py       # §4 §5 — structure de l'index
 .venv/bin/python scripts/audit/exp_riskcov.py       # §3 §4 — risque/couverture, 3 espaces
-.venv/bin/python scripts/audit/exp_synthetic.py 150 # §1.3 — banc synthétique par ère
+.venv/bin/python scripts/evaluate_synthetic.py      # §1.3 — banc synthétique par ère
 ```
 
 Chiffres de référence de la chaîne existante, revérifiés :
