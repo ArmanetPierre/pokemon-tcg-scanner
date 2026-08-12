@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src import pipeline  # noqa: E402
 from src.fingerprint import fingerprint, short  # noqa: E402
 from src.search import CardIndex  # noqa: E402
 
@@ -102,6 +103,21 @@ def main() -> int:
                 "produit scalaire",
         "encoder_sha256": encoder_sha,
         "data_source": source,
+        # Les seuils voyagent AVEC l'index, et ne sont pas recopiés à la main
+        # côté app. Ils dépendent de l'enrôlement : le centroïde et l'index de
+        # référence n'ont pas la même échelle de marges, et une app qui
+        # garderait les anciennes valeurs face à un nouvel index affirmerait
+        # à tort — sans qu'aucune erreur ne soit levée. Même raisonnement que
+        # l'empreinte de l'encodeur ci-dessus.
+        "confidence": {
+            "firm_id_margin": pipeline.FIRM_ID_MARGIN,
+            "firm_name_margin": pipeline.FIRM_NAME_MARGIN,
+            "no_firm_verdict_on_full_photo": True,
+            "note": "marges calculées AVANT toute promotion par le numéro lu. "
+                    "Le repli photo-entière ne peut produire aucun verdict "
+                    "ferme : aucune identification correcte n'en est jamais "
+                    "sortie sur le banc, et un faux positif ferme si.",
+        },
         "encoder_note": "empreinte de CardEncoder.mlpackage. L'app doit la "
                         "comparer au modèle qu'elle embarque et refuser de "
                         "démarrer si elle diffère : un index et un encodeur "

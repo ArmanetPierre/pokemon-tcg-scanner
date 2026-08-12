@@ -360,15 +360,41 @@ Deux marges, calculées sur le classement par similarité :
 
 | Condition | Niveau | Affichage suggéré |
 |---|---|---|
+| la sélection a retenu la **photo entière** | `incertain` | demander un cadrage sur la carte |
 | le numéro a été lu sur la carte (§7) | `edition` | carte et set fermes |
-| marge d'édition ≥ 0,03 | `edition` | carte et set fermes |
-| marge de nom ≥ 0,04 | `nom` | « Primeape — édition à confirmer » |
+| marge d'édition ≥ `firm_id_margin` | `edition` | carte et set fermes |
+| marge de nom ≥ `firm_name_margin` | `nom` | « Primeape — édition à confirmer » |
 | sinon | `incertain` | proposer le top-5, ou inviter à stabiliser |
 
-Ces seuils sont **calibrés sur 18 photos d'un seul joueur**. Ils tiennent sur ce
-jeu (aucune sur-vente : les deux vrais échecs étaient classés « incertain »),
-mais méritent d'être reconfirmés sur un échantillon plus large avant d'être
-figés.
+**Ne pas coder les seuils en dur.** Ils sont dans `index.json`, sous
+`confidence`, et ils **dépendent de l'index** : deux stratégies d'enrôlement
+n'ont pas la même échelle de marges. Une app qui garderait ses anciennes valeurs
+face à un index régénéré affirmerait à tort, sans qu'aucune erreur ne soit
+levée — exactement le problème que l'empreinte de l'encodeur évite pour le
+modèle (§4).
+
+```swift
+let seuils = meta.confidence          // firm_id_margin, firm_name_margin
+```
+
+Valeurs de l'index courant : **0,045** et **0,06**. Elles sont plus hautes que
+ce que la calibration exige (0,028) : c'est un choix de politique — le produit
+préfère se taire à tort qu'affirmer à tort — et une borne établie sur quatre
+négatifs n'a aucune marge de sécurité.
+
+**Le repli photo-entière ne doit jamais produire de verdict ferme**
+(`no_firm_verdict_on_full_photo`). Quand aucun quadrilatère n'est retenu, le
+vecteur décrit une scène et non une carte redressée : la marge y compare deux
+mauvaises réponses entre elles. Mesuré sur 46 photos, ce repli n'a produit
+**aucune identification correcte** et exactement un faux positif ferme.
+
+**Ce que ces seuils valent, et ce qu'ils ne valent pas.** Sur le banc de 46
+photos : 29 affirmations fermes, dont 28 justes, et les 7 photos sans bonne
+réponse (dos de carte, cartes d'un autre jeu, carte coréenne, pochon, flou
+illisible) toutes refusées. Mais le système **ne sait pas dire « ceci n'est pas
+une carte Pokémon »** : il répond « incertain », ce qui invite l'utilisateur à
+reprendre une photo qui ne marchera jamais. Prévoir un message de sortie après
+deux ou trois refus consécutifs.
 
 Pourquoi deux niveaux : la confusion vit presque entièrement *à l'intérieur du
 même nom de carte* — plusieurs tirages de la même illustration dans des sets
