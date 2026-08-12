@@ -225,7 +225,8 @@ mesure vaut mieux qu'une piste rouverte tous les six mois.
 - **Corriger l'anisotropie sans supervision dégrade.** Le centrage
   (`e − µ`, renormalisé) multiplie la marge intrinsèque médiane par 3,55 et
   écrase la hubness (hub maximal 284 → 77), mais fait tomber le top-1 de 26/31 à
-  23/31. CSLS fait pire encore, à 22/31.
+  23/31 — mesuré sur le bras similarité seule du banc de 32 photos, avant son
+  élargissement. CSLS fait pire encore, à 22/31.
 - **Une projection apprise gagne, mais n'est pas livrable.** Entraînée en
   contrastif sur des paires (scan dégradé → scan), elle porte le banc synthétique
   de 91,1 % à 95,2 % sur des cartes jamais vues, et améliore nettement le tri

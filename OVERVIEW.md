@@ -9,26 +9,30 @@ The rest of this repository is in French; this file is the English way in.
 metrics with confidence intervals, known failures, and published negative
 results.
 
-**Status.** 31 correct identifications out of 31 real iPhone photographs —
-which on a bench this size demonstrates **at least 89 % precision**, not 100 %
-(Wilson 95 % interval). The photographs come from two collections shot by two
-people (French cards against an English index, in ordinary conditions —
-backlight, sleeves, cluttered backgrounds, tilted cards, and a second batch shot
-entirely in landscape), measured on a Mac. A 32nd photograph shows the back of a
-card: the chain answers "uncertain", which is the correct answer. It now also
-runs on an iPhone, inside a real app, where the encoder takes **5.5 ms** on the
-Neural Engine.
+**Status.** 35 correct identifications out of 39 real iPhone photographs
+(89.7 %, Wilson 95 % interval 76-96 %). The bench read 31/31 until a third batch
+— older cards, botched framing, and seven photographs with **no correct answer
+at all** — brought it down to this. That batch also produced **three confident
+wrong attributions**, one of them on a motion blur no human can identify. The
+photographs come from three collections shot by several people (French cards
+against an English index, in ordinary conditions — backlight, sleeves, cluttered
+backgrounds, tilted cards, binder pages, one batch entirely in landscape),
+measured on a Mac. It also runs on an iPhone, inside a real app, where the
+encoder takes **5.5 ms** on the Neural Engine.
+
+Do not read the headline number without `docs/model-card.md`: what the system
+must not be used for is as measured as what it does.
 
 **What each stage contributes**, by ablation on that same bench:
 
 | Configuration | Top-1 |
 |---|---|
-| whole photograph, no detection or orientation | 4/31 (13 %, CI95 5-29) |
-| + detection, filtering, orientation → **similarity alone** | 26/31 (84 %, CI95 67-93) |
-| + reading the printed number → **full chain** | 31/31 (100 %, CI95 89-100) |
+| whole photograph, no detection or orientation | 5/39 (13 %, CI95 6-27) |
+| + detection, filtering, orientation → **similarity alone** | 29/39 (74 %, CI95 59-85) |
+| + reading the printed number → **full chain** | 35/39 (90 %, CI95 76-96) |
 
-Framing is worth 22 identifications; the embedding only ever works on what it is
-handed; reading the printed collector number recovers 5 more. The headline
+Framing is worth 24 identifications; the embedding only ever works on what it is
+handed; reading the printed collector number recovers 6 more. The headline
 number is a property of the *chain*, not of the model — reach for a better
 encoder and you are optimising the stage that contributes least.
 
@@ -101,10 +105,14 @@ would then behave as universal attractors — every poor photograph would resemb
 them. Availability is therefore decided on a content digest, in
 `ml/src/fallback_images.py`.
 
-**Being in the index is not the same as being tested.** Every photograph on the
-bench is of a recent card, and **47 % of the index predates Sun & Moon**, where
-borders, art frames and footer layouts differ substantially. Coverage is a count;
-it is not evidence.
+**Being in the index is not the same as being tested.** The bench holds exactly
+**one** card older than Sun & Moon, while **47 % of the index predates it** —
+and that one card is among the failures, confidently misattributed. Coverage is
+a count; it is not evidence.
+
+The synthetic bench measures the blind spot the real one cannot reach: over
+1 209 queries on held-out cards, the WotC era scores **75.6 %** against **95.8 %**
+for Diamond & Pearl — twenty points of spread.
 
 Two numbers explain much of the design:
 
@@ -154,7 +162,7 @@ tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 | `CardEncoder.mlpackage` | 69 MB | image → 512-dimension vector |
 | `index.bin` | 21 MB | 20 512 float16 vectors, L2-normalised |
 | `index.json` | 0.2 MB | index shape and `card_ids`, in row order |
-| `cards.json` | 4.1 MB | display metadata, aligned with the index |
+| `cards.json` | 5.0 MB | display metadata, aligned with the index, incl. `needs_printed_number` |
 
 The iOS app fetches this for you: `npm run sync:model`.
 
@@ -166,9 +174,11 @@ index, and the test photographs.
 
 ```bash
 cd ml
-python3.11 -m venv .venv && .venv/bin/pip install -e .
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.lock.txt   # the exact versions measured
+.venv/bin/pip install -e . --no-deps
 
-.venv/bin/python scripts/build_metadata.py     # metadata, from pokemon-tcg-data
+.venv/bin/python scripts/build_metadata.py     # metadata, at the pinned revision
 .venv/bin/python scripts/add_missing_cards.py  # sets that source lacks, from TCGdex
 .venv/bin/python scripts/download_images.py    # high-resolution images, ~15 min
 .venv/bin/python scripts/build_embeddings.py   # vector index, ~6 min on an M3
@@ -263,16 +273,22 @@ the card back correctly lands in `uncertain`. They are *not* held out for the
 quadrilateral filters, which were tuned in the same commit that added them; the
 split annotations in `truth.json` say exactly which is which.
 
-Reported as a curve rather than a threshold, on the similarity-only arm: the
-margin sorts well (**AURC 0.047**), and **a margin of 0.0141 buys 100 % precision
-at 65 % coverage** — the shipped 0.03 is more conservative than the bench
-requires. On the full chain every answer is correct, so the curve is flat and
-says nothing; that is a limit of 31 photographs, not evidence of perfection.
+**These thresholds are not good enough, and that is measured.** On the widened
+bench, precision at 25 % coverage (80 %) is *lower* than at full coverage
+(89.7 %): sorting by margin is worse than not sorting. AURC is 0.101. Three
+photographs get a firm, wrong answer — including a motion blur that carries a
+larger margin than fifteen of the twenty-one correct identifications.
 
-32 photographs remains a small sample: two collections, one phone model, no
-organised-play conditions, and **not one card older than Sun & Moon** while 47 %
-of the index is. `docs/audit-ml.md` measures that blind spot on 1 650 synthetic
-queries and finds the WotC era 19 points below Diamond & Pearl.
+Raising the threshold does not fix it. To stop that blur being asserted,
+`FIRM_ID_MARGIN` must go from 0.03 to 0.0558, which drops firm verdicts from
+21/21 to **6/21**. Blocking one false positive costs 71 % of coverage. Nothing
+was changed in production on the strength of seven negatives.
+
+The root cause is that refusal rests on a single quantity, the margin, which
+answers "are these two candidates close?" and not "am I even looking at a
+card?". No threshold on the first answers the second. `docs/audit-ml.md` §0
+carries the full measurement and the proposed fix — a confidence learned over
+several signals, which needs thirty to fifty negatives rather than seven.
 
 ---
 
