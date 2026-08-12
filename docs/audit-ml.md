@@ -516,13 +516,48 @@ comme couche finale (coût d'inférence nul) et régénérer `index.bin` avec la
 matrice — un index et un encodeur désaccordés donneraient des réponses
 plausibles et fausses, ce qui est l'argument du chantier G.
 
-### D — Enrôlement multi-vues
-**Effort : faible. À faire avant C, pour savoir ce que C doit battre.**
-Encoder chaque référence sous k=4 augmentations, comparer trois variantes :
-centroïde renormalisé (index inchangé, 21 Mo), k vecteurs avec max-pooling au
-scoring (index ×4, 84 Mo), et k=1 actuel.
-*Critère de sortie :* décision chiffrée sur le banc synthétique, ventilée par
-ère et par coût mémoire.
+### D — Enrôlement multi-vues — 🔶 **mesuré : ne gagne pas en précision, mais rend le refus praticable**
+**Effort : faible. Coût d'exploitation : nul.**
+
+`ml/scripts/build_multiview_index.py` remplace le vecteur de référence de chaque
+carte par le **centroïde** de {scan, 2 dégradations}, renormalisé. L'index garde
+sa forme exacte : 21 Mo, même format, même recherche, aucun changement Swift.
+
+| | index de référence | centroïde |
+|---|---:|---:|
+| top-1 (banc réel, 39 photos) | **35/39 (89,7 %)** | 34/39 (87,2 %) |
+| top-5 | 37/39 | 36/39 |
+| refus corrects | 6/7 | **7/7** |
+| faux positifs fermes | 3 | **2** |
+| AURC | 0,101 | **0,077** |
+| précision à 25 % de couverture | 80 % | **100 %** |
+
+Il perd une identification et répare la confiance. Le chiffre décisif est
+ailleurs : **le coût du refus.** Pour qu'aucun négatif ne soit affirmé,
+`FIRM_ID_MARGIN` doit monter à 0,0558 avec l'index de référence, ce qui laisse
+**6 verdicts fermes sur 21**. Avec le centroïde, il suffit de 0,0278, et il en
+reste **16 sur 21**. Le problème passe de « impraticable » à « coûte 24 % de la
+couverture ».
+
+Le flou d'`IMG_5124`, affirmé fermement par l'index de référence, redevient
+« incertain ». C'est le seul changement qui répare un des trois faux positifs
+sans rien régler à la main.
+
+**Une limite de mon propre instrument, découverte en m'en servant.** Le banc
+synthétique donne 99,9 % au centroïde contre 91,1 % à l'index de référence — un
+gain qui ne se retrouve pas du tout sur les vraies photos. La raison est
+structurelle : enrôlement et requête sortent du **même modèle de dégradation**,
+donc l'index a été déplacé vers exactement la famille d'images qu'on lui
+présente ensuite. Changer le sel n'y change rien : le sel change le tirage, pas
+la famille. Le banc synthétique compare honnêtement deux **espaces** ; il ne
+peut pas comparer deux stratégies d'**enrôlement**. C'est écrit en tête de
+`evaluate_synthetic.py` pour que personne ne s'y laisse prendre.
+
+*Reste à faire :* la variante multi-vecteurs (k vecteurs par carte, score =
+maximum sur les vues) est plus expressive, mais elle multiplie l'index par k et
+rompt la correspondance ligne à ligne avec `card_ids`. À n'ouvrir que si le
+centroïde est retenu — et la décision dépend d'un arbitrage produit : une
+identification de moins contre un faux positif ferme de moins.
 
 ### E — Exposer le plafond structurel dans le produit — ✅ **fait**
 **Effort : faible. Impact produit direct.**

@@ -338,6 +338,10 @@ def main() -> int:
         help="projection apprise, appliquée aux requêtes ET à l'index",
     )
     parser.add_argument(
+        "--embeddings", type=Path,
+        help="index alternatif (ex. centroïde multi-vues), aligné sur card_ids",
+    )
+    parser.add_argument(
         "--calibrate", action="store_true",
         help="proposer des seuils à partir du split de calibration seul",
     )
@@ -384,6 +388,12 @@ def main() -> int:
     else:
         encoder = load_encoder(args.model)
     index = CardIndex(args.model)
+
+    if args.embeddings:
+        alt = np.load(args.embeddings).astype(np.float32)
+        alt /= np.linalg.norm(alt, axis=1, keepdims=True)
+        index.embeddings = alt
+        print(f"index alternatif : {args.embeddings.name}")
 
     if args.projection:
         matrix = np.load(args.projection).astype(np.float32)

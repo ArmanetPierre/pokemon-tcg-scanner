@@ -24,15 +24,17 @@ chaîne qui identifie, pas le modèle seul :
 
 | Configuration | Top-1 |
 |---|---|
-| photo entière, sans détection ni orientation | 4/31 (13 %, IC95 5-29) |
-| + détection, filtrage, orientation → **similarité seule** | 26/31 (84 %, IC95 67-93) |
-| + lecture du numéro imprimé → **chaîne complète** | 31/31 (100 %, IC95 89-100) |
+| photo entière, sans détection ni orientation | 5/39 (13 %, IC95 6-27) |
+| + détection, filtrage, orientation → **similarité seule** | 29/39 (74 %, IC95 59-85) |
+| + lecture du numéro imprimé → **chaîne complète** | 35/39 (90 %, IC95 76-96) |
 
-*(Ablation mesurée sur les 32 photos d'origine ; à refaire sur le banc étendu.)*
-
-Le cadrage vaut 22 identifications, l'embedding ne travaille que sur ce qu'on
-lui donne, et la lecture du numéro imprimé en rattrape 5 de plus. Reproductible
+Le cadrage vaut 24 identifications, l'embedding ne travaille que sur ce qu'on
+lui donne, et la lecture du numéro imprimé en rattrape 6 de plus. Reproductible
 par `scripts/evaluate_real.py --ablation`.
+
+Le rapport entre les étages tient sur le banc élargi : la similarité seule
+plafonne à 74 %, et l'OCR du bandeau en récupère 16 points. Chercher un meilleur
+encodeur, c'est optimiser l'étage qui pèse le moins.
 
 **Ça tourne sur iPhone.** Le portage Swift est intégré à une app Expo,
 [hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), comme

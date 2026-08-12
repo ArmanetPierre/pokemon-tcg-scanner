@@ -18,6 +18,18 @@ Ce que ce banc mesure et ne mesure pas :
              ni les erreurs de la détection en amont — et le pipeline complet
              (orientation, lecture du numéro) n'est pas dans la boucle.
 
+ATTENTION, limite découverte en s'en servant (chantier D) : ce banc **surestime
+massivement** tout enrôlement multi-vues. L'index centroïde y monte à 99,9 %
+contre 91,1 % pour l'index de référence, alors que sur de vraies photos il fait
+légèrement MOINS bien en top-1. La raison est structurelle : enrôlement et
+requête sont produits par le même modèle de dégradation, donc l'index a été
+déplacé vers exactement la famille d'images qu'on lui présente ensuite. Changer
+le sel ne corrige pas cela — le sel change le tirage, pas la famille.
+
+En clair, ce banc compare honnêtement deux ESPACES (projection, encodeur,
+prétraitement) mais pas deux stratégies d'ENRÔLEMENT. Pour celles-là, seul
+evaluate_real.py tranche.
+
 Le juge de paix reste `evaluate_real.py`. Celui-ci sert à ne pas naviguer à
 l'aveugle entre deux mesures sur 31 photos.
 """
@@ -106,6 +118,9 @@ def main() -> int:
     parser.add_argument("--views", type=int, default=1, help="dégradations par carte")
     parser.add_argument("--projection", type=Path,
                         help="matrice apprise à appliquer aux requêtes ET à l'index")
+    parser.add_argument("--embeddings", type=Path,
+                        help="index alternatif (ex. centroïde multi-vues), "
+                             "aligné ligne à ligne sur card_ids")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--salt", type=int, default=0,
@@ -117,6 +132,15 @@ def main() -> int:
 
     index = CardIndex(args.model)
     gallery = index.embeddings.astype(np.float32)
+
+    if args.embeddings:
+        gallery = np.load(args.embeddings).astype(np.float32)
+        if gallery.shape != index.embeddings.shape:
+            print(f"forme {gallery.shape} incompatible avec l'index "
+                  f"{index.embeddings.shape}", file=sys.stderr)
+            return 1
+        gallery /= np.linalg.norm(gallery, axis=1, keepdims=True)
+        print(f"index alternatif : {args.embeddings.name}")
 
     if args.projection:
         W = np.load(args.projection).astype(np.float32)

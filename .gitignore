@@ -36,3 +36,7 @@ ml/data/atlas/
 # Projection apprise : artefact expérimental, régénérable par
 # ml/scripts/train_projection.py, et non embarquée (voir docs/audit-ml.md §C).
 ml/data/export/projection.*
+
+# Index centroïde : artefact expérimental, régénérable par
+# ml/scripts/build_multiview_index.py (voir docs/audit-ml.md §D).
+ml/data/embeddings/*/centroid.npy
