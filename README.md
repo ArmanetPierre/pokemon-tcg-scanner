@@ -54,7 +54,7 @@ sur appareil a appris est en [`integration-kit/AGENTS.md`](integration-kit/AGENT
 publiés en release :
 
 ```bash
-gh release download kit-v4 --repo ArmanetPierre/pokemon-tcg-scanner
+gh release download kit-v5 --repo ArmanetPierre/pokemon-tcg-scanner
 tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 ```
 

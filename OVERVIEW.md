@@ -153,7 +153,7 @@ The encoder and the index are ~94 MB and are not in git. A built copy is
 published as a release:
 
 ```bash
-gh release download kit-v4 --repo ArmanetPierre/pokemon-tcg-scanner
+gh release download kit-v5 --repo ArmanetPierre/pokemon-tcg-scanner
 tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 ```
 

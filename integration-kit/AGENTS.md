@@ -23,8 +23,10 @@ la logique de décision validée.
 > pipeline que seul un vrai jeu de photos a fait apparaître.
 
 > **Récupérer le modèle et l'index** : ils ne sont pas dans le dépôt (94 Mo).
-> Une archive est publiée en release, `kit-v4` — c'est ce que télécharge le
-> `sync-model.mjs` de l'app. Les régénérer demande les 5,5 Go d'images de
+> Une archive est publiée en release, **`kit-v5`** — c'est ce que télécharge le
+> `sync-model.mjs` de l'app, et il faut pointer dessus : `kit-v4` porte l'ancien
+> enrôlement et n'a ni les seuils dans `index.json`, ni les empreintes, ni
+> `needs_printed_number`. Les régénérer demande les 5,5 Go d'images de
 > référence.
 
 > **Flux vidéo** : adapté. L'embedding tourne en **3,3 ms** sur le Neural
