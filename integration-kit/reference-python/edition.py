@@ -92,12 +92,31 @@ def _digit_distance(a: str, b: str) -> int:
     return sum(x != y for x, y in zip(a, b))
 
 
+# Jusqu'où la tolérance d'un chiffre a le droit d'aller chercher un candidat.
+#
+# Au-delà, le numéro doit correspondre exactement. La tolérance existe pour
+# absorber une confusion de l'OCR (7↔1, 2↔Z) ; elle ne doit pas servir à
+# rapprocher deux numéros réellement différents. Mesuré sur une carte
+# japonaise : « 033/100 » lue sans la moindre erreur a promu, depuis le rang 7,
+# un Wigglytuff « 13/100 » d'une série anglaise sans rapport — le total
+# coïncidait, et « 33 » n'est qu'à un chiffre de « 13 ». Le classement par
+# ressemblance, lui, avait la bonne carte au rang 1.
+#
+# Cinq parce que les réimpressions d'une même illustration se tiennent en tête
+# du classement, alors qu'un candidat lointain n'est rapproché que par le
+# hasard de deux chiffres. Le repêchage profond que le banc documente
+# (Hariyama 113/193 au rang 12) reposait sur une lecture *exacte*, et continue
+# donc de fonctionner.
+TOLERANCE_DEPTH = 5
+
+
 def match_edition(hits, pairs: list[tuple[str, str]]):
     """Cherche quel candidat du top-k porte un des numéros lus.
 
     Retourne (indice du candidat, nombre d'erreurs OCR tolérées) ou None. Le
     total imprimé doit correspondre exactement — c'est lui qui identifie le
-    set ; le numéro tolère une confusion résiduelle d'un chiffre.
+    set ; le numéro tolère une confusion résiduelle d'un chiffre, mais
+    seulement sur les premiers candidats (voir TOLERANCE_DEPTH).
     """
     best: tuple[int, int] | None = None
     for i, hit in enumerate(hits):
@@ -105,11 +124,12 @@ def match_edition(hits, pairs: list[tuple[str, str]]):
         total = str(hit.card.get("set_printed_total") or "")
         if not number.isdigit() or not total:
             continue
+        allowed = 1 if i < TOLERANCE_DEPTH else 0
         for read_number, read_total in pairs:
             if _digit_distance(read_total, total) != 0:
                 continue
             errors = _digit_distance(read_number, number)
-            if errors <= 1 and (best is None or errors < best[1]):
+            if errors <= allowed and (best is None or errors < best[1]):
                 best = (i, errors)
     return best
 

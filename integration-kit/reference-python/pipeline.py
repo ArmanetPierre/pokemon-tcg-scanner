@@ -255,7 +255,10 @@ def classify_confidence(hits, band_verdict: str | None = None,
         return Confidence("edition", "numéro lu", margin_id, margin_name)
     if full_photo:
         return Confidence("incertain", "cadrage insuffisant", margin_id, margin_name)
-    if margin_id >= FIRM_ID_MARGIN:
+    # Un total lu qui dément le candidat interdit le verdict ferme : la
+    # ressemblance peut désigner la bonne illustration, elle ne peut pas
+    # désigner un tirage que la carte elle-même contredit.
+    if band_verdict != "contredit" and margin_id >= FIRM_ID_MARGIN:
         return Confidence("edition", "similarité", margin_id, margin_name)
     if margin_name >= FIRM_NAME_MARGIN:
         return Confidence("nom", "similarité", margin_id, margin_name)
@@ -376,4 +379,27 @@ def refine_with_band(variant: Variant, hits, index):
         return reordered, "ocr"
     if pairs and not known_pair(index, pairs):
         return hits, "hors_index"
+    if pairs and _total_contradicts(hits[0], pairs):
+        return hits, "contredit"
     return hits, None
+
+
+def _total_contradicts(hit, pairs) -> bool:
+    """Le total imprimé sur la carte dément-il celui du meilleur candidat ?
+
+    Le total nomme l'extension : une carte qui annonce « /100 » n'appartient pas
+    à une extension de 159 cartes, quelle que soit la ressemblance. C'est le cas
+    des cartes japonaises, qu'un index de tirages occidentaux ne peut pas placer
+    par construction — l'illustration est la bonne, le tirage ne l'est jamais.
+
+    Mesuré sur sept photos japonaises : trois recevaient un verdict *ferme*
+    désignant un tirage occidental, sur la seule similarité, alors que le
+    bandeau annonçait « 041/100 » face à un candidat en 159. Le numéro n'avait
+    promu personne, donc rien ne s'y opposait.
+    """
+    from src.edition import _digit_distance
+
+    total = hit.card.get("set_printed_total")
+    if not total:
+        return False
+    return all(_digit_distance(read_total, str(total)) != 0 for _, read_total in pairs)
