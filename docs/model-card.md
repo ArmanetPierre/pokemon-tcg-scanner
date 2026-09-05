@@ -130,6 +130,7 @@ fond chargé, cartes inclinées, en classeur, un lot entièrement en paysage.
 | photos avec réponse | 21 | 18 | 39 |
 | top-1 | 21/21 (100 %, IC95 85-100) | **14/18 (78 %, IC95 55-91)** | **35/39 (90 %, IC95 76-96)** |
 | top-5 | 21/21 | 16/18 | 37/39 |
+| verdicts fermes, et justes | | | **29/39, dont 29/29** |
 | refus corrects | 3/4 | 3/3 | **6/7** |
 
 **Le protocole, et ce qu'il ne garantit pas.** Les seuils de confiance ont été
@@ -186,16 +187,21 @@ trier par la marge est pire que ne pas trier. AURC = 0,101.
 
 ## Défaillances connues
 
-**Trois attributions fermes et fausses** sur 46 photos — le pire résultat
-possible pour un utilisateur, qui n'a aucun moyen de savoir que la réponse est
-inventée :
+**Une attribution ferme et fausse** sur 46 photos — le pire résultat possible
+pour un utilisateur, qui n'a aucun moyen de savoir que la réponse est inventée :
+
+- **Un flou de bougé qu'aucun humain ne peut identifier**, annoncé fermement.
+
+Le troisième lot en avait produit **trois**. Les deux autres ne se produisent
+plus, et aucune des 39 photos ayant une bonne réponse n'est aujourd'hui affirmée
+à tort : **29 verdicts fermes, 29 justes**. Elles restent notées ici parce
+qu'elles disent où la chaîne cède :
 
 1. Carte petite dans une étagère encombrée : aucun quadrilatère ne l'isole, le
-   **repli photo-entière** l'emporte et affirme une carte sans rapport, la bonne
-   réponse n'étant même pas dans le top-5.
-2. Carte de 2006 (Crystal Guardians) : rang 2, et une autre carte affirmée. C'est
-   le décrochage des ères anciennes, confirmé sur une vraie photo.
-3. **Un flou de bougé qu'aucun humain ne peut identifier**, annoncé fermement.
+   **repli photo-entière** l'emportait et affirmait une carte sans rapport, la
+   bonne réponse n'étant même pas dans le top-5.
+2. Carte de 2006 (Crystal Guardians) : rang 2, et une autre carte affirmée.
+   C'était le décrochage des ères anciennes, confirmé sur une vraie photo.
 
 **Le seuil ne se répare pas par recalibration.** Pour que le flou cesse d'être
 affirmé, `FIRM_ID_MARGIN` doit passer de 0,03 à 0,0558 — ce qui fait tomber les
@@ -258,6 +264,11 @@ artefacts restant hors du dépôt :
 | AURC | 0,101 | **0,077** | 0,016 (banc de 32) |
 | coût du refus sans faux positif | 71 % de couverture | **24 %** | non calibrable |
 | coût d'exploitation | — | **nul** | nul |
+
+⚠️ **Lire ce tableau en colonnes.** Le `README` a annoncé pendant un temps
+« 34/39 et 7/7 » comme état courant : ce sont les chiffres du **centroïde
+multi-vues**, qui n'est pas embarqué. Le livré fait 35/39 et 6/7. La colonne de
+gauche est la seule qui décrit ce que l'application fait.
 
 Le centroïde perd une identification et répare la confiance. L'arbitrage est un
 choix produit, pas technique : une identification de moins contre une

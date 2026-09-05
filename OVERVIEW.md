@@ -275,9 +275,12 @@ split annotations in `truth.json` say exactly which is which.
 
 **These thresholds are not good enough, and that is measured.** On the widened
 bench, precision at 25 % coverage (80 %) is *lower* than at full coverage
-(89.7 %): sorting by margin is worse than not sorting. AURC is 0.101. Three
-photographs get a firm, wrong answer — including a motion blur that carries a
-larger margin than fifteen of the twenty-one correct identifications.
+(89.7 %): sorting by margin is worse than not sorting. AURC is 0.101. One
+photograph still gets a firm, wrong answer: a motion blur that carries a larger
+margin than fifteen of the twenty-one correct identifications. The widened
+bench first produced three; the other two no longer occur, and none of the 39
+photographs that have a right answer is asserted wrongly today (29 firm
+verdicts, 29 of them correct).
 
 Raising the threshold does not fix it. To stop that blur being asserted,
 `FIRM_ID_MARGIN` must go from 0.03 to 0.0558, which drops firm verdicts from

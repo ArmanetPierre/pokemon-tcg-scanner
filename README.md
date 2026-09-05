@@ -9,33 +9,33 @@ l'appareil**, destinée à une app iOS.
 > Ce que le système vaut, où il échoue, et ce qu'il ne faut pas lui demander :
 > [`docs/model-card.md`](docs/model-card.md).
 
-**État actuel : 34 identifications correctes sur 39 photos iPhone réelles**
-(87,2 %, IC de Wilson à 95 % : 73-94 %), et **une seule affirmation ferme
-fausse** sur 29, aucun des 7 négatifs n'étant affirmé. La configuration est
-réglée contre les faux positifs : mieux vaut demander une autre photo
-qu'annoncer une carte fausse avec assurance. Le banc annonçait 31/31 jusqu'à ce
-qu'un troisième lot — cartes anciennes, cadrages ratés, et sept photos sans
-bonne réponse possible — le ramène à cette valeur. Ce lot a d'abord produit
-**trois attributions fermes et fausses**, dont une sur un flou que personne ne
-peut identifier ; il en reste une, sur une carte de 2006. L'histoire complète
-est dans `docs/audit-ml.md` §0. Les photos viennent de trois
+**État actuel : 35 identifications correctes sur 39 photos iPhone réelles**
+(89,7 %, IC de Wilson à 95 % : 76-96 %), et **aucune affirmation ferme fausse**
+parmi les 29 verdicts fermes. La configuration est réglée contre les faux
+positifs : mieux vaut demander une autre photo qu'annoncer une carte fausse avec
+assurance. Le banc annonçait 31/31 jusqu'à ce qu'un troisième lot — cartes
+anciennes, cadrages ratés, et sept photos sans bonne réponse possible — le
+ramène à cette valeur. Ce lot a d'abord produit **trois attributions fermes et
+fausses** ; il n'en reste qu'une, sur un flou de bougé que personne ne peut
+identifier. Les deux autres, l'étagère encombrée et la carte de 2006, ne se
+produisent plus. L'histoire complète est dans `docs/audit-ml.md` §0. Les photos viennent de trois
 collections photographiées par plusieurs personnes (cartes françaises, index
 anglais, conditions ordinaires — contre-jour, pochette, fond chargé, cartes
 inclinées, un lot entièrement en paysage, et des cartes en classeur). Sept
 autres photos n'ont **aucune bonne réponse possible** : dos de carte, cartes
 One Piece, carte coréenne, pochon porte-cartes, flou illisible. La chaîne se
-tait correctement sur **les sept**. Mesuré sur Mac.
+tait correctement sur **six des sept** : le flou reste affirmé. Mesuré sur Mac.
 
 **Ce que chaque étage apporte**, mesuré par ablation sur ce même banc — c'est la
 chaîne qui identifie, pas le modèle seul :
 
 | Configuration | Top-1 |
 |---|---|
-| photo entière, sans détection ni orientation | 8/39 (21 %, IC95 11-36) |
-| + détection, filtrage, orientation → **similarité seule** | 28/39 (72 %, IC95 56-83) |
-| + lecture du numéro imprimé → **chaîne complète** | 34/39 (87 %, IC95 73-94) |
+| photo entière, sans détection ni orientation | 5/39 (12,8 %, IC95 6-27) |
+| + détection, filtrage, orientation → **similarité seule** | 29/39 (74,4 %, IC95 59-85) |
+| + lecture du numéro imprimé → **chaîne complète** | 35/39 (89,7 %, IC95 76-96) |
 
-Le cadrage vaut 20 identifications, l'embedding ne travaille que sur ce qu'on
+Le cadrage vaut 24 identifications, l'embedding ne travaille que sur ce qu'on
 lui donne, et la lecture du numéro imprimé en rattrape 6 de plus. Reproductible
 par `scripts/evaluate_real.py --ablation`.
 
