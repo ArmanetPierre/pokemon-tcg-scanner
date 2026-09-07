@@ -1,205 +1,202 @@
 # Pokémon TCG Scanner
 
-Reconnaissance de cartes Pokémon à partir d'une photo, **entièrement sur
-l'appareil**, destinée à une app iOS.
+Recognition of Pokémon cards from a photo, **entirely on device**, meant for an
+iOS app.
 
-> En anglais : [`OVERVIEW.md`](OVERVIEW.md) — architecture, mesures, pièges et
-> limites, en un seul document.
+> [`OVERVIEW.md`](OVERVIEW.md) — architecture, measurements, traps and limits, in
+> a single document.
 >
-> Ce que le système vaut, où il échoue, et ce qu'il ne faut pas lui demander :
+> What the system is worth, where it fails, and what not to ask of it:
 > [`docs/model-card.md`](docs/model-card.md).
 
-**État actuel : 35 identifications correctes sur 39 photos iPhone réelles**
-(89,7 %, IC de Wilson à 95 % : 76-96 %), et **aucune affirmation ferme fausse**
-parmi les 29 verdicts fermes. La configuration est réglée contre les faux
-positifs : mieux vaut demander une autre photo qu'annoncer une carte fausse avec
-assurance. Le banc annonçait 31/31 jusqu'à ce qu'un troisième lot — cartes
-anciennes, cadrages ratés, et sept photos sans bonne réponse possible — le
-ramène à cette valeur. Ce lot a d'abord produit **trois attributions fermes et
-fausses** ; il n'en reste qu'une, sur un flou de bougé que personne ne peut
-identifier. Les deux autres, l'étagère encombrée et la carte de 2006, ne se
-produisent plus. L'histoire complète est dans `docs/audit-ml.md` §0. Les photos viennent de trois
-collections photographiées par plusieurs personnes (cartes françaises, index
-anglais, conditions ordinaires — contre-jour, pochette, fond chargé, cartes
-inclinées, un lot entièrement en paysage, et des cartes en classeur). Sept
-autres photos n'ont **aucune bonne réponse possible** : dos de carte, cartes
-One Piece, carte coréenne, pochon porte-cartes, flou illisible. La chaîne se
-tait correctement sur **six des sept** : le flou reste affirmé. Mesuré sur Mac.
+**Current state: 35 correct identifications out of 39 real iPhone photos**
+(89.7 %, 95 % Wilson CI: 76-96 %), and **no firm-and-wrong assertion** among the
+29 firm verdicts. The configuration is tuned against false positives: better to
+ask for another photo than confidently announce a wrong card. The bench reported
+31/31 until a third batch — old cards, botched framing, and seven photos with no
+possible right answer — brought it back to this value. That batch first produced
+**three firm-and-wrong attributions**; only one remains, on a motion blur nobody
+can identify. The other two, the cluttered shelf and the 2006 card, no longer
+happen. The full story is in `docs/audit-ml.md` §0. The photos come from three
+collections photographed by several people (French cards, English index,
+ordinary conditions — backlight, sleeve, busy background, tilted cards, one batch
+entirely in landscape, and cards in a binder). Seven other photos have **no
+possible right answer**: card back, One Piece cards, Korean card, card-holder
+pouch, illegible blur. The chain correctly stays silent on **six of the seven**:
+the blur is still asserted. Measured on a Mac.
 
-**Ce que chaque étage apporte**, mesuré par ablation sur ce même banc — c'est la
-chaîne qui identifie, pas le modèle seul :
+**What each stage contributes**, measured by ablation on this same bench — it is
+the chain that identifies, not the model alone:
 
 | Configuration | Top-1 |
 |---|---|
-| photo entière, sans détection ni orientation | 5/39 (12,8 %, IC95 6-27) |
-| + détection, filtrage, orientation → **similarité seule** | 29/39 (74,4 %, IC95 59-85) |
-| + lecture du numéro imprimé → **chaîne complète** | 35/39 (89,7 %, IC95 76-96) |
+| whole photo, no detection or orientation | 5/39 (12.8 %, CI95 6-27) |
+| + detection, filtering, orientation → **similarity alone** | 29/39 (74.4 %, CI95 59-85) |
+| + reading the printed number → **full chain** | 35/39 (89.7 %, CI95 76-96) |
 
-Le cadrage vaut 24 identifications, l'embedding ne travaille que sur ce qu'on
-lui donne, et la lecture du numéro imprimé en rattrape 6 de plus. Reproductible
-par `scripts/evaluate_real.py --ablation`.
+The framing is worth 24 identifications, the embedding only works on what it is
+given, and reading the printed number recovers 6 more. Reproducible with
+`scripts/evaluate_real.py --ablation`.
 
-Chercher un meilleur encodeur, c'est optimiser l'étage qui pèse le moins : la
-similarité seule plafonne à 72 %, et l'OCR du bandeau récupère 15 points. Sur
-les 29 affirmations fermes de la chaîne, **25 viennent du numéro imprimé lu**.
+Looking for a better encoder means optimizing the stage that weighs the least:
+similarity alone tops out at 72 %, and the OCR of the bottom strip recovers 15
+points. Of the chain's 29 firm assertions, **25 come from the printed number
+read**.
 
-**Ça tourne sur iPhone.** Le portage Swift est intégré à une app Expo,
-[hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), comme
-module natif `expo-card-encoder`, à côté du chemin OCR + TCGdex existant. Sur
-iPhone 13 Pro, l'encodeur fait **5,5 ms** sur le Neural Engine. Ce que le passage
-sur appareil a appris est en [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md)
+**It runs on iPhone.** The Swift port is integrated into an Expo app,
+[hugo-heer/poke-scanner](https://github.com/hugo-heer/poke-scanner), as a native
+module `expo-card-encoder`, alongside the existing OCR + TCGdex path. On an
+iPhone 13 Pro, the encoder takes **5.5 ms** on the Neural Engine. What the move
+onto device taught is in [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md)
 §10.
 
-**Récupérer le modèle et l'index** sans reconstruire la chaîne ML — 94 Mo,
-publiés en release :
+**Get the model and the index** without rebuilding the ML chain — 94 MB,
+published as a release:
 
 ```bash
 gh release download kit-v5 --repo ArmanetPierre/pokemon-tcg-scanner
 tar -xzf card-encoder-kit.tar.gz -C integration-kit/
 ```
 
-## Principe
+## Principle
 
-Pas de classifieur à 20 000 classes. L'architecture est
-**détection + embedding + recherche par similarité** : une nouvelle extension se
-règle en régénérant l'index, sans réentraînement.
+No 20,000-class classifier. The architecture is
+**detection + embedding + similarity search**: a new set is handled by
+regenerating the index, without retraining.
 
 ```
-photo → détection du quadrilatère (Vision) → redressement (homographie)
-     → orientation par position du texte → embedding (MobileCLIP2-S2, 512 dims)
-     → recherche cosinus sur 20 512 cartes → lecture du numéro imprimé
-     → carte + niveau de confiance
+photo → quadrilateral detection (Vision) → rectification (homography)
+     → orientation from text position → embedding (MobileCLIP2-S2, 512 dims)
+     → cosine search over 20,512 cards → reading the printed number
+     → card + confidence level
 ```
 
-## Organisation
+## Layout
 
-| Dossier | Contenu |
+| Folder | Content |
 |---|---|
-| `ml/src/` | pipeline, détection, orientation, lecture du bandeau, recherche |
-| `ml/scripts/` | dataset, embeddings, évaluation, exports Core ML et index |
-| `integration-kit/` | doc d'intégration iOS (`AGENTS.md`) et mesures de référence |
-| `docs/` | [fiche modèle](docs/model-card.md), [audit ML](docs/audit-ml.md), rapport de tests et plan d'amélioration |
-| `plan-ios.md` | plan d'origine et résultats mesurés |
+| `ml/src/` | pipeline, detection, orientation, bottom-strip reading, search |
+| `ml/scripts/` | dataset, embeddings, evaluation, Core ML and index exports |
+| `integration-kit/` | iOS integration doc (`AGENTS.md`) and reference measurements |
+| `docs/` | [model card](docs/model-card.md), [ML audit](docs/audit-ml.md), test report and improvement plan |
+| `plan-ios.md` | original plan and measured results |
 
-## Ce qui n'est pas versionné
+## What is not versioned
 
-Tout le lourd est régénérable et volontairement absent du dépôt : les 5,5 Go
-d'images de référence, la banque d'embeddings, le modèle Core ML, l'index
-binaire et les photos de test.
+Everything heavy is regenerable and deliberately absent from the repo: the 5.5 GB
+of reference images, the embedding bank, the Core ML model, the binary index and
+the test photos.
 
 ```bash
 cd ml
 python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.lock.txt   # versions exactes des mesures
+.venv/bin/pip install -r requirements.lock.txt   # exact versions of the measurements
 .venv/bin/pip install -e . --no-deps
 
-.venv/bin/python scripts/build_metadata.py      # métadonnées (pokemon-tcg-data)
-.venv/bin/python scripts/add_missing_cards.py   # sets que cette source ignore (TCGdex)
-.venv/bin/python scripts/download_images.py     # images haute résolution (~15 min)
-.venv/bin/python scripts/build_embeddings.py    # index vectoriel (~6 min sur M3)
+.venv/bin/python scripts/build_metadata.py      # metadata (pokemon-tcg-data)
+.venv/bin/python scripts/add_missing_cards.py   # sets this source ignores (TCGdex)
+.venv/bin/python scripts/download_images.py     # high-resolution images (~15 min)
+.venv/bin/python scripts/build_embeddings.py    # vector index (~6 min on M3)
 ```
 
-Puis, pour reconstituer le kit d'intégration :
+Then, to rebuild the integration kit:
 
 ```bash
-.venv/bin/python scripts/export_coreml.py       # CardEncoder.mlpackage + parité
+.venv/bin/python scripts/export_coreml.py       # CardEncoder.mlpackage + parity
 .venv/bin/python scripts/export_index.py        # index.bin + cards.json
 ```
 
-`scripts/refresh_index.py --check` signale les sets sortis depuis la dernière
-construction ; `scripts/add_missing_cards.py --check` dit lesquels sont
-réellement ajoutables et lesquels n'ont d'image nulle part.
+`scripts/refresh_index.py --check` reports the sets released since the last build;
+`scripts/add_missing_cards.py --check` says which are actually addable and which
+have no image anywhere.
 
-**L'index est reconstructible à l'identique.** La source de métadonnées est
-épinglée à une révision précise — lire `master` en ferait une cible mouvante, et
-deux reconstructions à un mois d'écart donneraient deux index différents sans
-que rien ne le signale. `scripts/build_metadata.py --check` compare l'épingle à
-l'amont, `--ref <sha>` la déplace délibérément. Les versions de paquets sont
-figées dans `requirements.lock.txt`.
+**The index is rebuildable identically.** The metadata source is pinned to a
+precise revision — reading `master` would make it a moving target, and two
+rebuilds a month apart would give two different indexes with nothing to signal
+it. `scripts/build_metadata.py --check` compares the pin to upstream, `--ref
+<sha>` moves it deliberately. The package versions are frozen in
+`requirements.lock.txt`.
 
-**Index : 20 512 cartes, 176 sets.** Plus aucune carte des métadonnées n'est
-sans image. **Plus aucune carte de l'index n'est sans image.**
+**Index: 20,512 cards, 176 sets.** No card in the metadata is without an image
+any longer. **No card in the index is without an image any longer.**
 
-Les 49 dernières — collections McDonald's 2014/2015/2017/2018 et une promo HGSS —
-ont été récupérées à la main et intégrées par
-[`scripts/import_local_images.py`](ml/scripts/import_local_images.py), aucune
-source publique ne les servant.
+The last 49 — the McDonald's collections 2014/2015/2017/2018 and one HGSS promo —
+were retrieved by hand and integrated by
+[`scripts/import_local_images.py`](ml/scripts/import_local_images.py), no public
+source serving them.
 
-## Vérifier
-
-```bash
-.venv/bin/python scripts/evaluate_real.py            # banc d'essai, PyTorch
-.venv/bin/python scripts/evaluate_real.py --ablation # ce qu'apporte chaque étage
-.venv/bin/python scripts/evaluate_real.py --coreml   # avec le modèle embarqué
-.venv/bin/python scripts/scan.py photo.jpeg          # identifier une photo
-```
-
-Le banc s'appuie sur `ml/data/eval/truth.json`, la vérité terrain établie en
-lisant nom, numéro et code de set imprimés sur chaque carte. Les photos
-correspondantes sont hors dépôt.
-
-**Protocole.** Les 46 photos sont réparties en deux splits, inscrits dans
-`truth.json` avec le détail de ce dont chacun est — et n'est pas — du hold-out :
-`calibration` (25 photos, dont 4 sans bonne réponse) et `test` (21 photos, dont
-3 sans bonne réponse). Les seuils de confiance ont été fixés avant l'arrivée du
-2ᵉ lot et n'ont pas bougé ; les filtres de détection, eux, ont été réglés en le
-voyant, et le 3ᵉ lot leur rend ce hold-out perdu. Le banc rapporte les deux
-splits séparément, avec leurs intervalles.
-
-Les négatifs sont majoritairement en calibration, et c'est délibéré : jusqu'au
-3ᵉ lot, **aucune** photo de calibration n'était sans réponse, donc le
-comportement de refus n'était calibré sur rien. `--calibrate` en tient compte —
-un seuil doit atteindre 100 % de précision sur les positifs *et* passer au-dessus
-de ce que les négatifs obtiennent.
-
-Chaque taux sort avec son intervalle de Wilson, et la confiance est rapportée
-par une **courbe risque/couverture** plutôt que par un seuil : un seuil n'est
-comparable ni entre deux modèles ni entre deux espaces métriques, une courbe
-l'est toujours.
-
-**Le banc synthétique**, lui, couvre tout l'index — 31 photos de cartes récentes
-ne peuvent pas voir un décrochage par ère, alors que 47 % de l'index précède Sun
-& Moon :
+## Verify
 
 ```bash
-.venv/bin/python scripts/evaluate_synthetic.py            # 150 cartes par ère
+.venv/bin/python scripts/evaluate_real.py            # test bench, PyTorch
+.venv/bin/python scripts/evaluate_real.py --ablation # what each stage contributes
+.venv/bin/python scripts/evaluate_real.py --coreml   # with the embedded model
+.venv/bin/python scripts/scan.py photo.jpeg          # identify a photo
 ```
 
-La requête est un scan de référence dégradé ([`src/augment.py`](ml/src/augment.py) :
-perspective résiduelle, sous-échantillonnage, flou, exposition, reflet holo,
-bruit, JPEG), donc la vérité terrain est gratuite et exacte. C'est une mesure
-**relative** — elle compare des ères, des sets et des variantes de modèle entre
-elles ; elle ne prédit pas la précision sur de vraies photos, faute de
-reproduire l'optique du capteur et les erreurs de la détection. Le juge de paix
-reste `evaluate_real.py`.
+The bench relies on `ml/data/eval/truth.json`, the ground truth established by
+reading the name, number and set code printed on each card. The matching photos
+are outside the repo.
 
-## Trois choses à savoir avant de toucher au code
+**Protocol.** The 46 photos are split into two splits, recorded in `truth.json`
+with the detail of what each one is — and is not — a hold-out of: `calibration`
+(25 photos, of which 4 with no right answer) and `test` (21 photos, of which 3
+with no right answer). The confidence thresholds were fixed before the 2nd batch
+arrived and have not moved; the detection filters, on the other hand, were tuned
+while seeing it, and the 3rd batch makes this hold-out lost to them. The bench
+reports the two splits separately, with their intervals.
 
-Elles ont chacune coûté du temps, et sont détaillées dans
-[`integration-kit/AGENTS.md`](integration-kit/AGENTS.md) §3 :
+The negatives are mostly in calibration, and that is deliberate: until the 3rd
+batch, **no** calibration photo was without an answer, so the refusal behaviour
+was calibrated on nothing. `--calibrate` takes this into account — a threshold
+must reach 100 % precision on the positives *and* rank above what the negatives
+get.
 
-- **Le score absolu ne discrimine rien.** Deux cartes sans rapport se
-  ressemblent déjà à ~0,79. C'est l'écart entre le 1er et le 2e candidat qui
-  porte l'information.
-- **L'embedding ne doit jamais arbitrer l'orientation.** Une carte à l'envers
-  peut scorer plus haut sur une mauvaise carte que le crop droit sur la bonne.
-  L'orientation se décide sur la position du texte.
-- **La géométrie du prétraitement doit être identique au pixel près** entre
-  l'index et les requêtes : petit côté à 256 en bilinéaire, puis recadrage
-  centré. Un écrasement direct en 256×256 fait chuter la parité à 0,65.
+Every rate comes out with its Wilson interval, and confidence is reported by a
+**risk/coverage curve** rather than by a threshold: a threshold is comparable
+neither between two models nor between two metric spaces, a curve always is.
 
-## Pour intégrer dans une app iOS
+**The synthetic bench**, for its part, covers the whole index — 31 photos of
+recent cards cannot see an era-by-era drop-off, whereas 47 % of the index
+predates Sun & Moon:
 
-Tout est dans [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md) :
-pipeline étape par étape avec l'API native correspondante, pièges,
-seuils de confiance, format des fichiers, fixtures de validation, et budget
-temps pour un flux vidéo (§9 — le modèle ne pèse que 5 % du coût d'une
-identification ; les deux OCR de Vision en pèsent les deux tiers). Le §8 donne le
-profil d'une photo entière, où ce qui décide vraiment du temps de traitement est
-le nombre de crops candidats : **287 ms → 159 ms par photo** en écartant les
-quadrilatères trop petits avant tout traitement, et en lisant le bandeau en deux
-passes.
+```bash
+.venv/bin/python scripts/evaluate_synthetic.py            # 150 cards per era
+```
 
-Un portage existe déjà et sert de référence :
+The query is a degraded reference scan ([`src/augment.py`](ml/src/augment.py):
+residual perspective, downsampling, blur, exposure, holo glare, noise, JPEG), so
+the ground truth is free and exact. It is a **relative** measurement — it
+compares eras, sets and model variants against each other; it does not predict
+the accuracy on real photos, since it does not reproduce the sensor's optics or
+the detection's errors. The referee stays `evaluate_real.py`.
+
+## Three things to know before touching the code
+
+Each one cost time, and they are detailed in
+[`integration-kit/AGENTS.md`](integration-kit/AGENTS.md) §3:
+
+- **The absolute score discriminates nothing.** Two unrelated cards already
+  resemble each other at ~0.79. It is the gap between the 1st and the 2nd
+  candidate that carries the information.
+- **The embedding must never arbitrate the orientation.** An upside-down card can
+  score higher on a wrong card than the upright crop on the right one.
+  Orientation is decided from the text position.
+- **The preprocessing geometry must be identical to the pixel** between the index
+  and the queries: short side to 256 in bilinear, then centre crop. A direct
+  squash to 256×256 drops the parity to 0.65.
+
+## To integrate into an iOS app
+
+Everything is in [`integration-kit/AGENTS.md`](integration-kit/AGENTS.md):
+step-by-step pipeline with the matching native API, traps, confidence thresholds,
+file formats, validation fixtures, and time budget for a video stream (§9 — the
+model is only 5 % of the cost of an identification; Vision's two OCRs weigh two
+thirds of it). §8 gives the profile of a whole photo, where what really decides
+the processing time is the number of candidate crops: **287 ms → 159 ms per
+photo** by discarding the too-small quadrilaterals before any processing, and by
+reading the bottom strip in two passes.
+
+A port already exists and serves as a reference:
 [`modules/expo-card-encoder`](https://github.com/hugo-heer/poke-scanner/tree/main/modules/expo-card-encoder)
-dans l'app poke-scanner — Swift, avec son propre README.
+in the poke-scanner app — Swift, with its own README.

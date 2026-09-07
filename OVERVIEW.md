@@ -4,8 +4,8 @@ Identifies a Pokémon trading card from a photograph, entirely on the phone, wit
 no network call. Point a camera at a card and get back which card it is, which
 set it was printed in, and how much that answer can be trusted.
 
-The rest of this repository is in French; this file is the English way in.
-`docs/model-card.md` is the citable summary: intended use, what is out of scope,
+This file is an overview of the whole project. `docs/model-card.md` is the
+citable summary: intended use, what is out of scope,
 metrics with confidence intervals, known failures, and published negative
 results.
 

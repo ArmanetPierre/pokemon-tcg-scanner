@@ -1,319 +1,313 @@
-# Reconnaissance de cartes Pokémon TCG — kit d'intégration iOS
+# Pokémon TCG card recognition — iOS integration kit
 
-Ce kit identifie une carte Pokémon à partir d'une photo, **entièrement sur
-l'appareil**, sans réseau. Il contient le modèle, l'index des 20 512 cartes, et
-la logique de décision validée.
+This kit identifies a Pokémon card from a photo, **entirely on device**, with no
+network. It contains the model, the index of the 20,512 cards, and the validated
+decision logic.
 
-> **Statut mesuré** : 34 identifications correctes sur 39 photos iPhone réelles
-> (87 %, IC95 73-94), issues de trois collections photographiées par plusieurs
-> personnes (cartes françaises, index anglais, conditions ordinaires :
-> contre-jour, pochette, fond chargé, cartes inclinées, classeur, un lot
-> entièrement en paysage). **29 affirmations fermes, dont 28 justes.** Sept
-> autres photos n'ont aucune bonne réponse possible — dos de carte, cartes d'un
-> autre jeu, carte coréenne, pochon porte-cartes, flou illisible — et la chaîne
-> les refuse **toutes les sept**. Mesures sur Mac avec le modèle exporté ici.
+> **Measured status**: 34 correct identifications out of 39 real iPhone photos
+> (87 %, CI95 73-94), from three collections photographed by several people
+> (French cards, English index, ordinary conditions: backlight, sleeve, busy
+> background, tilted cards, binder, one batch entirely in landscape). **29 firm
+> assertions, of which 28 correct.** Seven other photos have no possible right
+> answer — card back, cards from another game, Korean card, card-holder pouch,
+> illegible blur — and the chain refuses **all seven**. Measured on a Mac with
+> the model exported here.
 >
-> Le chiffre a baissé depuis `kit-v4`, qui annonçait 31/31 : ce n'est pas une
-> régression, c'est un banc élargi qui mesure enfin ce que le précédent ne
-> voyait pas. Lire `docs/model-card.md` avant d'annoncer une performance.
+> The figure has dropped since `kit-v4`, which announced 31/31: this is not a
+> regression, it is a widened bench finally measuring what the previous one did
+> not see. Read `docs/model-card.md` before announcing a performance.
 >
-> **Ça tourne maintenant sur iPhone.** Portage Swift intégré à une app Expo, mesuré
-> sur iPhone 13 Pro : voir §8. L'encodeur y fait **5,5 ms** sur le Neural Engine.
-> Le §10 rassemble ce que le passage sur appareil a appris — dont une lacune du
-> pipeline que seul un vrai jeu de photos a fait apparaître.
+> **It now runs on iPhone.** Swift port integrated into an Expo app, measured on
+> an iPhone 13 Pro: see §8. The encoder there takes **5.5 ms** on the Neural
+> Engine. §10 gathers what the move onto device taught — including a pipeline gap
+> that only a real photo set brought out.
 
-> **Récupérer le modèle et l'index** : ils ne sont pas dans le dépôt (94 Mo).
-> Une archive est publiée en release, **`kit-v5`** — c'est ce que télécharge le
-> `sync-model.mjs` de l'app, et il faut pointer dessus : `kit-v4` porte l'ancien
-> enrôlement et n'a ni les seuils dans `index.json`, ni les empreintes, ni
-> `needs_printed_number`. Les régénérer demande les 5,5 Go d'images de
-> référence.
+> **Get the model and the index**: they are not in the repo (94 MB). An archive
+> is published as a release, **`kit-v5`** — it is what the app's `sync-model.mjs`
+> downloads, and you must point at it: `kit-v4` carries the old enrolment and has
+> neither the thresholds in `index.json`, nor the fingerprints, nor
+> `needs_printed_number`. Regenerating them requires the 5.5 GB of reference
+> images.
 
-> **Flux vidéo** : adapté. L'embedding tourne en **3,3 ms** sur le Neural
-> Engine et ne représente que 3 % du coût total ; le poste dominant est l'OCR de
-> Vision. Lire le §9 avant de concevoir la boucle vidéo — l'architecture y est
-> plus déterminante que le choix du modèle.
+> **Video stream**: suitable. The embedding runs in **3.3 ms** on the Neural
+> Engine and represents only 3 % of the total cost; the dominant item is Vision's
+> OCR. Read §9 before designing the video loop — the architecture matters more
+> there than the choice of model.
 
 ---
 
-## 1. Contenu
+## 1. Contents
 
-| Fichier | Taille | Rôle |
+| File | Size | Role |
 |---|---|---|
-| `CardEncoder.mlpackage` | 69 Mo | encodeur d'image → vecteur de 512 dimensions |
-| `index.bin` | 21 Mo | 20 512 vecteurs float16, L2-normalisés |
-| `index.json` | 0,2 Mo | forme de `index.bin` + `card_ids` dans l'ordre des lignes |
-| `cards.json` | 5,0 Mo | métadonnées d'affichage + `needs_printed_number`, même ordre que l'index |
-| `encoder_meta.json` | — | géométrie du prétraitement à reproduire |
-| `benchmarks.json` | — | mesures de référence, à comparer aux vôtres (§8) |
-| `test/` | — | fixtures pour vérifier l'intégration (voir §6) |
-| `reference-python/` | — | implémentation de référence, commentée |
+| `CardEncoder.mlpackage` | 69 MB | image encoder → 512-dimension vector |
+| `index.bin` | 21 MB | 20,512 float16 vectors, L2-normalised |
+| `index.json` | 0.2 MB | shape of `index.bin` + `card_ids` in row order |
+| `cards.json` | 5.0 MB | display metadata + `needs_printed_number`, same order as the index |
+| `encoder_meta.json` | — | preprocessing geometry to reproduce |
+| `benchmarks.json` | — | reference measurements, to compare to yours (§8) |
+| `test/` | — | fixtures to verify the integration (see §6) |
+| `reference-python/` | — | reference implementation, commented |
 
-Total à embarquer : **~95 Mo**.
+Total to bundle: **~95 MB**.
 
-Le dossier `reference-python/` n'est pas à porter tel quel : c'est la source de
-vérité du comportement. En cas de doute sur un détail, il fait foi.
+The `reference-python/` folder is not to be ported as is: it is the source of
+truth for behaviour. In case of doubt about a detail, it is authoritative.
 
 ---
 
-## 2. Le pipeline
+## 2. The pipeline
 
-Sept étapes. Chacune a un équivalent natif — rien n'est à réimplémenter à la
-main.
+Seven steps. Each has a native equivalent — nothing is to be reimplemented by
+hand.
 
 ```
 photo
-  1. détection des quadrilatères   VNDetectDocumentSegmentationRequest
+  1. quadrilateral detection       VNDetectDocumentSegmentationRequest
                                    + VNDetectRectanglesRequest
-  2. filtrage des candidats        géométrie + variance
-  3. redressement (homographie)    CIPerspectiveCorrection
+  2. candidate filtering           geometry + variance
+  3. rectification (homography)    CIPerspectiveCorrection
   4. orientation 0° / 180°         VNRecognizeTextRequest (.fast)
   5. embedding                     CardEncoder.mlpackage
-  6. recherche                     produit matriciel (Accelerate)
-  7. édition exacte                VNRecognizeTextRequest (.accurate)
-→ carte + niveau de confiance
+  6. search                        matrix product (Accelerate)
+  7. exact edition                 VNRecognizeTextRequest (.accurate)
+→ card + confidence level
 ```
 
-### 1. Détection
+### 1. Detection
 
-Lancer les **deux** détecteurs et fusionner leurs résultats. La segmentation
-document cadre mieux la carte ; le détecteur de rectangles rattrape les cas
-qu'elle rate.
+Run **both** detectors and merge their results. Document segmentation frames the
+card better; the rectangle detector catches the cases it misses.
 
-**À forme comparable, les candidats issus de la segmentation document passent en
-premier** : au dédoublonnage (étape 2), le premier vu gagne, et l'ordre inverse a
-coûté deux photos sur le banc d'essai. Ce n'est qu'une priorité par défaut, que
-la qualité géométrique du quadrilatère peut renverser — voir étape 2.
+**At comparable shape, the candidates from document segmentation go first**: at
+deduplication (step 2), the first seen wins, and the reverse order cost two
+photos on the test bench. It is only a default priority, which the quadrilateral's
+geometric quality can overturn — see step 2.
 
-### 2. Filtrage
+### 2. Filtering
 
-Quatre filtres, dans cet ordre. **C'est ici que se joue le temps de traitement** :
-tout ce qui survit coûte un redressement, une passe d'OCR et un embedding, et
-`VNDetectRectanglesRequest` rend jusqu'à 8 observations dont la plupart sont des
-parasites (§8).
+Four filters, in this order. **This is where the processing time is decided**:
+everything that survives costs a rectification, an OCR pass and an embedding, and
+`VNDetectRectanglesRequest` returns up to 8 observations, most of which are
+artefacts (§8).
 
-- **Surface** : rejeter un quadrilatère couvrant moins de **2 %** de la photo,
-  avant même de redresser. Sur le banc, 4 des 6,3 quadrilatères par photo font
-  moins de 1 % de la surface, alors que le candidat finalement retenu n'est
-  jamais descendu sous 6,6 %. Ce seul filtre fait passer le nombre de crops de
-  10,2 à 2,4 par photo, soit **−37 % de temps de traitement**.
-  ⚠️ Filtre de **surface**, surtout pas de format : la perspective écrase le
-  rapport apparent d'une carte (0,66 à 0,94 mesuré sur les quadrilatères
-  gagnants, contre 63/88 = 0,72 à plat). Un filtre sur le rapport
-  largeur/hauteur écarte de vraies cartes.
-  ⚠️ Pour scanner un étalage de plusieurs cartes, descendre à **0,5 %** : une
-  carte parmi dix couvre forcément une petite fraction du cadre.
-- **Dédoublonnage par centre** : deux quadrilatères dont les centres sont
-  distants de moins de 5 % du grand côté de l'image visent la même carte. Le
-  groupe est représenté par **le quadrilatère le mieux formé**, mesuré par
-  l'égalité de ses côtés opposés — `min(côté court / côté long)` sur les deux
-  paires de côtés opposés, 1 pour un rectangle, 0 pour un quadrilatère
-  dégénéré. Comparer par paliers de 0,10 et trancher les égalités par l'ordre
-  des détecteurs (segmentation d'abord).
-  Ce critère ne suppose rien du format de la carte : la perspective d'une photo
-  tenue à la main laisse les côtés opposés à peu près égaux, alors qu'un coin
-  mal placé effondre la mesure. Mesuré sur une photo du banc : les détecteurs
-  rendaient un quadrilatère parfait (0,98) et deux cassés (0,50 et 0,68), et
-  garder « le premier vu » retenait un cassé — crop tourné de 90°, bandeau
-  illisible, bonne espèce mais mauvaise édition.
-- **Variance** : rejeter un crop dont l'écart-type des niveaux de gris est
-  `< 8`. Ça élimine le ciel, une dalle, une touche de clavier.
-  ⚠️ Ne pas monter ce seuil. À 25 il éliminait une vraie carte à contre-jour
-  (écart-type 10,5). Rater une carte coûte bien plus cher que d'encoder un
-  parasite, que la sélection éliminera de toute façon.
-- **Repli photo entière** : si aucun crop n'atteint 0,65 de score, ajouter la
-  photo non découpée comme candidat. Nécessaire quand la carte remplit le
-  cadre et que ses bords sortent de l'image.
-  ⚠️ Ne **pas** mettre la photo entière en concurrence systématique : elle vole
-  la sélection aux crops légitimes à marge serrée.
-  ⚠️ Si c'est elle qui est retenue, **aucun verdict ferme n'est permis** (§5).
-  Sur 46 photos, ce repli n'a produit aucune identification correcte et
-  exactement un faux positif ferme.
+- **Area**: reject a quadrilateral covering less than **2 %** of the photo,
+  before even rectifying. On the bench, 4 of the 6.3 quadrilaterals per photo are
+  less than 1 % of the area, whereas the finally retained candidate never dropped
+  below 6.6 %. This single filter takes the number of crops from 10.2 to 2.4 per
+  photo, i.e. **−37 % processing time**.
+  ⚠️ An **area** filter, definitely not an aspect-ratio one: perspective squashes
+  the apparent ratio of a card (0.66 to 0.94 measured on the winning
+  quadrilaterals, against 63/88 = 0.72 flat). A width/height ratio filter
+  discards real cards.
+  ⚠️ To scan a display of several cards, go down to **0.5 %**: one card among ten
+  necessarily covers a small fraction of the frame.
+- **Deduplication by centre**: two quadrilaterals whose centres are less than
+  5 % of the image's long side apart target the same card. The group is
+  represented by **the best-formed quadrilateral**, measured by the equality of
+  its opposite sides — `min(short side / long side)` over the two pairs of
+  opposite sides, 1 for a rectangle, 0 for a degenerate quadrilateral. Compare in
+  steps of 0.10 and break ties by the detector order (segmentation first).
+  This criterion assumes nothing about the card's aspect ratio: the perspective
+  of a hand-held photo leaves the opposite sides roughly equal, whereas a
+  misplaced corner collapses the measure. Measured on one bench photo: the
+  detectors returned one perfect quadrilateral (0.98) and two broken ones (0.50
+  and 0.68), and keeping "the first seen" retained a broken one — crop rotated by
+  90°, illegible strip, right species but wrong edition.
+- **Variance**: reject a crop whose grey-level standard deviation is `< 8`. That
+  eliminates the sky, a slab, a keyboard key.
+  ⚠️ Do not raise this threshold. At 25 it eliminated a real backlit card
+  (standard deviation 10.5). Missing a card costs far more than encoding an
+  artefact, which the selection will eliminate anyway.
+- **Whole-photo fallback**: if no crop reaches a score of 0.65, add the uncropped
+  photo as a candidate. Needed when the card fills the frame and its edges leave
+  the image.
+  ⚠️ Do **not** put the whole photo in systematic competition: it steals the
+  selection from legitimate crops with a tight margin.
+  ⚠️ If it is the one retained, **no firm verdict is allowed** (§5). Over 46
+  photos, this fallback produced no correct identification and exactly one firm
+  false positive.
 
-### 3. Redressement
+### 3. Rectification
 
-Homographie des 4 coins vers un portrait 734 × 1024. Si le côté haut est plus
-long que le côté gauche, la carte est couchée : décaler les coins d'un cran
-avant de calculer la transformation.
+Homography of the 4 corners to a portrait 734 × 1024. If the top side is longer
+than the left side, the card is lying down: shift the corners by one notch before
+computing the transformation.
 
 ### 4. Orientation
 
-Une seule passe d'OCR rapide sur le crop, dont on ne garde que **la position**
-des boîtes de texte, pas leur contenu :
+A single fast OCR pass over the crop, of which only **the position** of the text
+boxes is kept, not their content:
 
-- centre de masse vertical du texte (0 = haut, 1 = bas), chaque boîte pondérée
-  par son nombre de caractères ;
-- `≥ 0,55` → carte à l'endroit ; `≤ 0,45` → la retourner à 180° ;
-- moins de 20 caractères lus, ou centre entre les deux → indécis : garder les
-  deux orientations comme candidats concurrents.
+- vertical centre of mass of the text (0 = top, 1 = bottom), each box weighted by
+  its number of characters;
+- `≥ 0.55` → card the right way up; `≤ 0.45` → flip it 180°;
+- fewer than 20 characters read, or centre between the two → undecided: keep both
+  orientations as competing candidates.
 
 ### 5. Embedding
 
-Entrée : image RVB **256 × 256**, pixels 0-255.
-Sortie : 512 flottants, **déjà L2-normalisés**.
+Input: RGB image **256 × 256**, pixels 0-255.
+Output: 512 floats, **already L2-normalised**.
 
-La normalisation (échelle, biais) est intégrée au graphe Core ML. Ne rien
-soustraire ni diviser côté Swift.
+The normalisation (scale, bias) is folded into the Core ML graph. Subtract or
+divide nothing on the Swift side.
 
-### 6. Recherche
+### 6. Search
 
-Similarité cosinus = produit scalaire, puisque tout est normalisé. Un produit
-matrice-vecteur `(20512 × 512) · (512)` via Accelerate suffit. Aucune
-bibliothèque vectorielle nécessaire.
+Cosine similarity = dot product, since everything is normalised. A matrix-vector
+product `(20512 × 512) · (512)` via Accelerate is enough. No vector library
+needed.
 
-Descendre à **20 candidats** minimum, pour deux raisons. La marge de nom (§5) a
-besoin de trouver un candidat portant un nom différent, or le haut du classement
-est souvent saturé de réimpressions. Et surtout, l'étape 7 ne réordonne que ce
-que la recherche lui donne : **une carte hors de cette fenêtre est perdue même si
-son numéro imprimé est parfaitement lisible.**
+Go down to **20 candidates** minimum, for two reasons. The name margin (§5) needs
+to find a candidate bearing a different name, and the top of the ranking is often
+saturated with reprints. And above all, step 7 only reorders what the search
+gives it: **a card outside this window is lost even if its printed number is
+perfectly legible.**
 
-⚠️ Ne pas garder l'ancienne valeur de 10. Une carte du banc sortait au rang 12,
-avec son « 113/193 » parfaitement net : la recherche la jetait avant que l'OCR
-puisse la sauver. 15 suffisait, 20 laisse de la marge, sans régression jusqu'à
-30 — la recherche coûte 1,6 ms.
+⚠️ Do not keep the old value of 10. One bench card came out at rank 12, with its
+"113/193" perfectly clear: the search discarded it before the OCR could save it.
+15 was enough, 20 leaves margin, with no regression up to 30 — the search costs
+1.6 ms.
 
-### 7. Édition exacte
+### 7. Exact edition
 
-OCR sur les **14 % inférieurs** du crop redressé, pour lire le motif
-« numéro/total » (ex. `043/084`).
+OCR over the **bottom 14 %** of the rectified crop, to read the "number/total"
+pattern (e.g. `043/084`).
 
-**Deux passes en cascade, pas une.** L'OCR `.accurate` coûte 51 ms et reste le
-premier poste de la chaîne ; le mode `.fast` sur ce même bandeau **agrandi ×2**
-coûte 12 ms. Sur le banc, le rapide tranche 16 bandeaux sur 21 contre 17 pour le
-précis, et surtout **les deux ne se contredisent jamais** : le rapide lit le bon
-numéro, ou ne lit rien. D'où la règle — passe rapide d'abord, passe précise
-seulement si la rapide n'a désigné aucun candidat. Coût moyen 24 ms au lieu de
-51, sans rien perdre.
+**Two cascaded passes, not one.** The `.accurate` OCR costs 51 ms and remains the
+first item of the chain; the `.fast` mode on that same strip **enlarged ×2**
+costs 12 ms. On the bench, the fast one settles 16 strips out of 21 against 17
+for the accurate one, and above all **the two never contradict each other**: the
+fast one reads the right number, or reads nothing. Hence the rule — fast pass
+first, accurate pass only if the fast one designated no candidate. Average cost
+24 ms instead of 51, without losing anything.
 
-L'agrandissement ×2 n'est pas optionnel : à l'échelle 1, le mode `.fast`
-décroche sur ces petits caractères et ne lit que 13 bandeaux sur 21.
+The ×2 enlargement is not optional: at scale 1, the `.fast` mode gives out on
+these small characters and reads only 13 strips out of 21.
 
-Puis, parmi les 20 candidats : le total imprimé doit correspondre exactement
-(c'est lui qui identifie le set), le numéro tolère **une** erreur de chiffre.
-Le candidat qui correspond est promu en tête.
+Then, among the 20 candidates: the printed total must match exactly (it is what
+identifies the set), the number tolerates **one** digit error. The matching
+candidate is promoted to the top.
 
-Appliquer une table de confusions avant extraction — l'OCR se trompe de façon
-prévisible sur ce bandeau : `O Q D → 0`, `I l | ) ] → 1`, `Z → 2`, `S → 5`,
-`T ? → 7`, `B → 8`. La liste complète est dans `reference-python/edition.py`.
+Apply a confusion table before extraction — the OCR errs predictably on this
+strip: `O Q D → 0`, `I l | ) ] → 1`, `Z → 2`, `S → 5`, `T ? → 7`, `B → 8`. The
+full list is in `reference-python/edition.py`.
 
-**Garde-fou hors index** : si un numéro est lu proprement mais qu'aucune carte
-de toute la base ne porte ce couple numéro/total, afficher « carte inconnue »
-plutôt qu'une attribution confiante. Trois cartes du banc étaient dans ce cas ;
-elles ont depuis toutes rejoint l'index — les 60 promos MEP, puis les 8 énergies
-MEE — et sont aujourd'hui correctement identifiées. Le garde-fou reste
-indispensable pour tout ce qui sortira après ce kit.
+**Out-of-index safeguard**: if a number is read cleanly but no card in the whole
+base bears this number/total pair, display "unknown card" rather than a confident
+attribution. Three bench cards were in this case; they have since all joined the
+index — the 60 MEP promos, then the 8 MEE energies — and are correctly identified
+today. The safeguard stays indispensable for anything released after this kit.
 
-⚠️ Ne prononcer « hors index » que sur la **passe précise**. Déclarer une carte
-absente de la base sur une lecture rapide, c'est affirmer beaucoup à partir du
-mode le moins fiable.
-
----
-
-## 3. Les pièges qui coûtent des heures
-
-Chacun a réellement coûté du temps pendant la mise au point.
-
-### L'orientation de l'image entre Vision et le découpage
-
-Vision travaille sur les pixels bruts. Si la couche qui découpe applique la
-rotation EXIF et pas celle qui détecte (ou l'inverse), les quadrilatères
-désignent une zone qui n'existe pas — les crops sortent hors cadre et le
-résultat est aléatoire.
-
-En Swift : passer explicitement la même `CGImagePropertyOrientation` à
-`VNImageRequestHandler` que celle du buffer utilisé pour le découpage. Une
-photo iPhone en portrait est stockée en paysage avec un drapeau d'orientation ;
-ignorer ce drapeau des deux côtés est parfaitement valide, à condition de le
-faire des deux côtés.
-
-*Symptôme* : scores autour de 0,4-0,5, résultats identiques sur des photos
-différentes (les crops sont noirs).
-
-### La géométrie du prétraitement doit être identique au pixel près
-
-L'index a été construit avec : **redimensionner le petit côté à 256 en
-bilinéaire avec antialiasing, puis recadrer au centre en 256 × 256**.
-
-⚠️ Ce recadrage **rogne volontairement le haut et le bas** d'une carte
-portrait. C'est le comportement d'origine du modèle, l'index entier est
-construit ainsi, et l'app doit faire exactement pareil. Redimensionner
-directement en 256 × 256 (écrasement) fait chuter la parité à **0,65**.
-
-Le filtre compte aussi : bilinéaire, pas bicubique.
-
-*Symptôme* : identifications plausibles mais souvent fausses, scores tièdes.
-
-### Ne jamais laisser l'embedding arbitrer l'orientation
-
-Tentant : encoder les deux orientations et garder le meilleur score. **Ça ne
-marche pas.** Une carte à l'envers ressemble encore à une carte et peut scorer
-plus haut sur une *mauvaise* carte que le crop droit sur la bonne — mesuré :
-0,834 (faux) contre 0,788 (juste).
-
-L'orientation se décide sur la position du texte (étape 4), jamais sur le
-score.
-
-### Ne jamais seuiller ni afficher le score absolu
-
-Toutes les cartes partagent une mise en page : deux cartes sans aucun rapport
-se ressemblent déjà à ~0,79. L'échelle utile va de 0,79 à 1, pas de 0 à 1.
-
-Le pire échec rencontré affichait le **deuxième meilleur score de tout le jeu**
-(0,8598). C'est l'**écart** entre le 1er et le 2e qui porte l'information.
-
-### Calculer les marges avant réordonnancement
-
-L'étape 7 promeut un candidat en tête. Si les marges sont calculées après, elles
-deviennent négatives et absurdes. Ordre correct : calculer la confiance sur le
-classement par similarité, **puis** relever le niveau si l'OCR a tranché.
+⚠️ Only pronounce "out of index" on the **accurate pass**. Declaring a card
+absent from the base on a fast reading is asserting a lot from the least reliable
+mode.
 
 ---
 
-## 4. Format des fichiers
+## 3. The traps that cost hours
+
+Each one genuinely cost time during development.
+
+### The image orientation between Vision and the cropping
+
+Vision works on the raw pixels. If the layer that crops applies the EXIF rotation
+and not the one that detects (or the reverse), the quadrilaterals designate a
+zone that does not exist — the crops come out of frame and the result is random.
+
+In Swift: explicitly pass the same `CGImagePropertyOrientation` to
+`VNImageRequestHandler` as that of the buffer used for the cropping. A portrait
+iPhone photo is stored in landscape with an orientation flag; ignoring this flag
+on both sides is perfectly valid, as long as you do it on both sides.
+
+*Symptom*: scores around 0.4-0.5, identical results on different photos (the
+crops are black).
+
+### The preprocessing geometry must be identical to the pixel
+
+The index was built with: **resize the short side to 256 in bilinear with
+antialiasing, then centre-crop to 256 × 256**.
+
+⚠️ This crop **deliberately trims the top and bottom** of a portrait card. It is
+the model's original behaviour, the whole index is built this way, and the app
+must do exactly the same. Resizing directly to 256 × 256 (squash) drops the
+parity to **0.65**.
+
+The filter matters too: bilinear, not bicubic.
+
+*Symptom*: plausible but often wrong identifications, lukewarm scores.
+
+### Never let the embedding arbitrate the orientation
+
+Tempting: encode both orientations and keep the best score. **It does not work.**
+An upside-down card still looks like a card and can score higher on a *wrong*
+card than the upright crop on the right one — measured: 0.834 (wrong) against
+0.788 (right).
+
+The orientation is decided from the text position (step 4), never from the score.
+
+### Never threshold or display the absolute score
+
+All cards share a layout: two entirely unrelated cards already resemble each
+other at ~0.79. The useful scale is 0.79 to 1, not 0 to 1.
+
+The worst failure encountered showed the **second-best score of the whole set**
+(0.8598). It is the **gap** between the 1st and the 2nd that carries the
+information.
+
+### Compute the margins before reordering
+
+Step 7 promotes a candidate to the top. If the margins are computed afterwards,
+they become negative and absurd. Correct order: compute the confidence on the
+similarity ranking, **then** raise the level if the OCR settled it.
+
+---
+
+## 4. File formats
 
 ### `index.bin`
 
-Tableau brut, **sans en-tête** : `count × dim` valeurs `float16`, ligne par
-ligne (row-major). `index.json` donne `count` (20512), `dim` (512) et
-`card_ids` — le n-ième identifiant correspond à la n-ième ligne.
+Raw array, **with no header**: `count × dim` `float16` values, row by row
+(row-major). `index.json` gives `count` (20512), `dim` (512) and `card_ids` — the
+nth identifier corresponds to the nth row.
 
 ```swift
 let meta = try JSONDecoder().decode(IndexMeta.self, from: Data(contentsOf: indexJSON))
-let raw = try Data(contentsOf: indexBin)          // 20 883 456 octets
+let raw = try Data(contentsOf: indexBin)          // 20,883,456 bytes
 // raw.count == meta.count * meta.dim * 2
 ```
 
-Les vecteurs sont déjà normalisés (norme 1,0000 ± 0,0001). Convertir en
-`Float32` pour le produit matriciel, ou utiliser directement les fonctions
-half-precision d'Accelerate.
+The vectors are already normalised (norm 1.0000 ± 0.0001). Convert to `Float32`
+for the matrix product, or use Accelerate's half-precision functions directly.
 
-Le passage float32 → float16 est vérifié à chaque export, sur 200 requêtes de
-contrôle : **top-1 identique sur 199/200, top-5 sur 193/200**. Le réordonnancement
-résiduel concerne des voisinages déjà indécidables — des cartes séparées par
-moins que le bruit de quantification, qui relèvent de toute façon de la lecture
-du numéro (voir `needs_printed_number` ci-dessous).
+The float32 → float16 pass is checked on every export, over 200 control queries:
+**top-1 identical on 199/200, top-5 on 193/200**. The residual reordering
+concerns already-undecidable neighbourhoods — cards separated by less than the
+quantisation noise, which are a matter of reading the number anyway (see
+`needs_printed_number` below).
 
-### Vérifier que l'index et le modèle vont ensemble
+### Check that the index and the model go together
 
-`index.json` porte `encoder_sha256`, l'empreinte du `CardEncoder.mlpackage` qui
-a produit les vecteurs. La même valeur est dans `encoder_meta.json`.
+`index.json` carries `encoder_sha256`, the fingerprint of the
+`CardEncoder.mlpackage` that produced the vectors. The same value is in
+`encoder_meta.json`.
 
-**L'app doit les comparer au démarrage et refuser de continuer si elles
-diffèrent.** Un index construit avec un encodeur et interrogé par un autre ne
-lève aucune erreur : la recherche rend des voisins, les scores restent dans leur
-plage habituelle, et les réponses sont plausibles et fausses. C'est le même
-genre de panne silencieuse que la géométrie de prétraitement (§3), et le seul
-qui n'était pas outillé.
+**The app must compare them at startup and refuse to continue if they differ.**
+An index built with one encoder and queried by another raises no error: the
+search returns neighbours, the scores stay in their usual range, and the answers
+are plausible and wrong. It is the same kind of silent failure as the
+preprocessing geometry (§3), and the only one that was not tooled.
 
 ```swift
 guard indexMeta.encoderSHA256 == encoderMeta.encoderSHA256 else {
-    throw KitError.mismatchedArtifacts   // ne pas dégrader : refuser
+    throw KitError.mismatchedArtifacts   // do not degrade: refuse
 }
 ```
 
 ### `cards.json`
 
-Tableau aligné sur `index.json.card_ids`, un objet par carte :
+Array aligned with `index.json.card_ids`, one object per card:
 
 ```json
 {
@@ -324,237 +318,228 @@ Tableau aligné sur `index.json.card_ids`, un objet par carte :
 }
 ```
 
-`image_small` est une URL distante — la seule chose du kit qui demande le
-réseau, et uniquement pour afficher la vignette officielle.
+`image_small` is a remote URL — the only thing in the kit that needs the network,
+and only to display the official thumbnail.
 
-### `needs_printed_number` — le plafond, connu d'avance
+### `needs_printed_number` — the ceiling, known in advance
 
-**4 787 cartes sur 20 512 (23,3 %) ne peuvent pas être tranchées par l'image
-seule.** Ce sont des réimpressions de la même illustration : 884 d'entre elles
-ont dans l'index un voisin à 0,99 ou plus, et pour celles-là aucune photo, aussi
-bonne soit-elle, ne produira une marge exploitable.
+**4,787 cards out of 20,512 (23.3 %) cannot be settled by the image alone.**
+These are reprints of the same artwork: 884 of them have a neighbour in the index
+at 0.99 or above, and for those no photo, however good, will produce a usable
+margin.
 
-La proportion dépend fortement de l'époque :
+The proportion depends strongly on the era:
 
-| Série | Cartes | Numéro requis |
+| Series | Cards | Number required |
 |---|---:|---:|
-| Base | 494 | **78,3 %** |
-| E-Card | 529 | 29,3 % |
-| Sword & Shield | 3 667 | 26,7 % |
-| Sun & Moon | 2 973 | 23,1 % |
-| Scarlet & Violet | 3 595 | 16,9 % |
-| Diamond & Pearl | 900 | 13,6 % |
-| Platinum | 517 | 7,5 % |
+| Base | 494 | **78.3 %** |
+| E-Card | 529 | 29.3 % |
+| Sword & Shield | 3,667 | 26.7 % |
+| Sun & Moon | 2,973 | 23.1 % |
+| Scarlet & Violet | 3,595 | 16.9 % |
+| Diamond & Pearl | 900 | 13.6 % |
+| Platinum | 517 | 7.5 % |
 
-L'intérêt du champ est qu'il est disponible **avant** de répondre. Quand le
-premier candidat le porte, une marge serrée n'est pas une anomalie mais le
-comportement attendu : l'app peut aller chercher le bandeau, demander un cadrage
-du bas de la carte, ou proposer les éditions candidates — plutôt que d'afficher
-un « incertain » qu'elle aurait pu prévoir.
+The point of the field is that it is available **before** answering. When the
+first candidate carries it, a tight margin is not an anomaly but the expected
+behaviour: the app can go and get the strip, ask for a shot of the bottom of the
+card, or offer the candidate editions — rather than displaying an "uncertain" it
+could have predicted.
 
-L'étiquette est **mesurée** (`ml/scripts/label_discriminability.py` rejoue des
-dégradations synthétiques de chaque carte contre l'index entier), pas déduite
-d'une règle. Deux limites : les requêtes sont synthétiques, donc c'est un
-indicateur de difficulté et non une prédiction d'échec ; et l'étiquette est
-calculée dans l'espace de l'index courant, donc périmée si l'encodeur change —
-d'où l'empreinte livrée avec.
+The label is **measured** (`ml/scripts/label_discriminability.py` replays
+synthetic degradations of each card against the whole index), not deduced from a
+rule. Two limits: the queries are synthetic, so it is a difficulty indicator and
+not a failure prediction; and the label is computed in the space of the current
+index, so it is stale if the encoder changes — hence the fingerprint shipped with
+it.
 
 ---
 
-## 5. Confiance et affichage
+## 5. Confidence and display
 
-Deux marges, calculées sur le classement par similarité :
+Two margins, computed on the similarity ranking:
 
-- **marge d'édition** = score du 1er − score du 2e ;
-- **marge de nom** = score du 1er − score du premier candidat portant un *nom
-  différent*.
+- **edition margin** = 1st candidate's score − 2nd candidate's score;
+- **name margin** = 1st candidate's score − the score of the first candidate
+  bearing a *different name*.
 
-| Condition | Niveau | Affichage suggéré |
+| Condition | Level | Suggested display |
 |---|---|---|
-| la sélection a retenu la **photo entière** | `incertain` | demander un cadrage sur la carte |
-| le numéro a été lu sur la carte (§7) | `edition` | carte et set fermes |
-| marge d'édition ≥ `firm_id_margin` | `edition` | carte et set fermes |
-| marge de nom ≥ `firm_name_margin` | `nom` | « Primeape — édition à confirmer » |
-| sinon | `incertain` | proposer le top-5, ou inviter à stabiliser |
+| the selection retained the **whole photo** | `uncertain` | ask for a shot framed on the card |
+| the number was read off the card (§7) | `edition` | card and set, firm |
+| edition margin ≥ `firm_id_margin` | `edition` | card and set, firm |
+| name margin ≥ `firm_name_margin` | `name` | "Primeape — edition to confirm" |
+| otherwise | `uncertain` | offer the top-5, or invite to steady the shot |
 
-**Ne pas coder les seuils en dur.** Ils sont dans `index.json`, sous
-`confidence`, et ils **dépendent de l'index** : deux stratégies d'enrôlement
-n'ont pas la même échelle de marges. Une app qui garderait ses anciennes valeurs
-face à un index régénéré affirmerait à tort, sans qu'aucune erreur ne soit
-levée — exactement le problème que l'empreinte de l'encodeur évite pour le
-modèle (§4).
+**Do not hard-code the thresholds.** They are in `index.json`, under
+`confidence`, and they **depend on the index**: two enrolment strategies do not
+have the same margin scale. An app that kept its old values against a regenerated
+index would assert wrongly, with no error raised — exactly the problem the
+encoder fingerprint avoids for the model (§4).
 
 ```swift
-let seuils = meta.confidence          // firm_id_margin, firm_name_margin
+let thresholds = meta.confidence          // firm_id_margin, firm_name_margin
 ```
 
-Valeurs de l'index courant : **0,045** et **0,06**. Elles sont plus hautes que
-ce que la calibration exige (0,028) : c'est un choix de politique — le produit
-préfère se taire à tort qu'affirmer à tort — et une borne établie sur quatre
-négatifs n'a aucune marge de sécurité.
+Values of the current index: **0.045** and **0.06**. They are higher than what
+the calibration requires (0.028): it is a policy choice — the product prefers to
+stay wrongly silent than to assert wrongly — and a bound established on four
+negatives has no safety margin.
 
-**Le repli photo-entière ne doit jamais produire de verdict ferme**
-(`no_firm_verdict_on_full_photo`). Quand aucun quadrilatère n'est retenu, le
-vecteur décrit une scène et non une carte redressée : la marge y compare deux
-mauvaises réponses entre elles. Mesuré sur 46 photos, ce repli n'a produit
-**aucune identification correcte** et exactement un faux positif ferme.
+**The whole-photo fallback must never produce a firm verdict**
+(`no_firm_verdict_on_full_photo`). When no quadrilateral is retained, the vector
+describes a scene and not a rectified card: the margin there compares two wrong
+answers against each other. Measured over 46 photos, this fallback produced **no
+correct identification** and exactly one firm false positive.
 
-**Ce que ces seuils valent, et ce qu'ils ne valent pas.** Sur le banc de 46
-photos : 29 affirmations fermes, dont 28 justes, et les 7 photos sans bonne
-réponse (dos de carte, cartes d'un autre jeu, carte coréenne, pochon, flou
-illisible) toutes refusées. Mais le système **ne sait pas dire « ceci n'est pas
-une carte Pokémon »** : il répond « incertain », ce qui invite l'utilisateur à
-reprendre une photo qui ne marchera jamais. Prévoir un message de sortie après
-deux ou trois refus consécutifs.
+**What these thresholds are worth, and what they are not.** On the 46-photo
+bench: 29 firm assertions, of which 28 correct, and the 7 photos with no right
+answer (card back, cards from another game, Korean card, pouch, illegible blur)
+all refused. But the system **cannot say "this is not a Pokémon card"**: it
+answers "uncertain", which invites the user to retake a photo that will never
+work. Plan an exit message after two or three consecutive refusals.
 
-Pourquoi deux niveaux : la confusion vit presque entièrement *à l'intérieur du
-même nom de carte* — plusieurs tirages de la même illustration dans des sets
-différents. Une marge serrée signifie souvent « bonne carte, édition
-incertaine », ce qui reste utile à l'utilisateur, et non « je ne sais pas ».
+Why two levels: the confusion lives almost entirely *within the same card name* —
+several printings of the same artwork in different sets. A tight margin often
+means "right card, uncertain edition", which is still useful to the user, and not
+"I do not know".
 
 ---
 
-## 6. Vérifier l'intégration
+## 6. Verify the integration
 
-Le dossier `test/` permet de valider par étapes plutôt que de déboguer la chaîne
-entière. `test/expected.json` contient les valeurs attendues.
+The `test/` folder allows validation in stages rather than debugging the whole
+chain. `test/expected.json` contains the expected values.
 
-**Étape 1 — le prétraitement seul.** Encoder `test/reference_card.jpg` (un scan
-officiel présent dans l'index) et comparer au vecteur donné dans
-`expected.json`. Un cosinus `≥ 0,98` valide la géométrie ; en dessous, le
-prétraitement est faux et rien d'autre ne marchera. La recherche doit renvoyer
-`me5-36` avec un score ≈ 0,995.
+**Step 1 — preprocessing alone.** Encode `test/reference_card.jpg` (an official
+scan present in the index) and compare to the vector given in `expected.json`. A
+cosine `≥ 0.98` validates the geometry; below it, the preprocessing is wrong and
+nothing else will work. The search must return `me5-36` with a score ≈ 0.995.
 
-**Étape 2 — la chaîne complète.** Trois photos réelles, choisies pour exercer
-des chemins différents :
+**Step 2 — the full chain.** Three real photos, chosen to exercise different
+paths:
 
-| Fichier | Ce qu'elle teste |
+| File | What it tests |
 |---|---|
-| `IMG_5033.jpeg` | cas nominal |
-| `IMG_5028.jpeg` | l'embedding seul se trompe — c'est l'OCR du bandeau qui donne la bonne réponse |
-| `IMG_5021.jpeg` | contre-jour, carte tenue à la main, bandeau illisible |
+| `IMG_5033.jpeg` | nominal case |
+| `IMG_5028.jpeg` | the embedding alone gets it wrong — it is the bottom-strip OCR that gives the right answer |
+| `IMG_5021.jpeg` | backlight, hand-held card, illegible strip |
 
-Les champs sous `attendu` doivent être reproduits. Ceux sous `indicatif`
-(crop retenu, valeurs de marge) peuvent varier légèrement selon
-l'implémentation sans que ce soit un problème.
+The fields under `expected` must be reproduced. Those under `indicative`
+(retained crop, margin values) can vary slightly depending on the implementation
+without it being a problem.
 
 ---
 
-## 7. Limites connues
+## 7. Known limits
 
-- **Cartes qui se chevauchent** : sur une photo de 5 cartes dont 4 se
-  recouvrent, une seule a été isolée (correctement identifiée). Les détecteurs
-  d'Apple ont besoin de voir 4 bords fermés. Pour un scan de collection,
-  demander d'espacer les cartes — ou entraîner un détecteur dédié.
-- **Cartes absentes de l'index** : **57 cartes** n'ont d'image dans aucune
-  source publique — 8 énergies « MEE », 48 cartes McDonald's, une promo HGSS.
-  Sans image, pas d'embedding ; le garde-fou du §7 les signale au lieu de les
-  attribuer à tort. Les promos « MEP », longtemps dans ce cas, sont entrées
-  dans l'index en kit-v4.
-  ⚠️ Le CDN de secours utilisé pour les récupérer (`images.scrydex.com`) ne
-  renvoie **jamais** 404 : il sert un placeholder en HTTP 200 pour tout
-  identifiant inconnu. Les ajouter sur la foi du code de statut aurait injecté
-  57 dos de carte identiques, attracteurs universels dans l'espace des
-  embeddings. La disponibilité se décide sur l'empreinte du contenu.
-- **Cartes anciennes non testées** : toutes les photos portent sur des cartes
-  récentes, alors que **47 % de l'index est antérieur à Sun & Moon**. Les mises
-  en page des séries Base, Neo ou EX diffèrent nettement — bordures, cadre
-  d'illustration, position du bandeau. Être dans l'index ne prouve rien sur la
-  reconnaissance : la couverture est un décompte, pas une mesure.
-- **Réimpressions** : 92 % des cartes partagent leur nom avec une autre (Pikachu
-  apparaît 99 fois). C'est la raison d'être des deux niveaux de confiance du §5.
-- **Langue** : l'index est en anglais, mais les cartes françaises sont
-  reconnues (l'illustration prime largement sur le texte). Non testé sur
-  japonais.
+- **Overlapping cards**: on a photo of 5 cards where 4 overlap, only one was
+  isolated (correctly identified). Apple's detectors need to see 4 closed edges.
+  For a collection scan, ask for the cards to be spaced out — or train a
+  dedicated detector.
+- **Cards absent from the index**: **57 cards** have no image in any public
+  source — 8 "MEE" energies, 48 McDonald's cards, one HGSS promo. Without an
+  image, no embedding; the safeguard of §7 flags them instead of attributing them
+  wrongly. The "MEP" promos, long in this case, entered the index in kit-v4.
+  ⚠️ The fallback CDN used to retrieve them (`images.scrydex.com`) **never**
+  returns 404: it serves a placeholder over HTTP 200 for any unknown identifier.
+  Adding them on the strength of the status code would have injected 57 identical
+  card backs, universal attractors in the embedding space. Availability is
+  decided on the content fingerprint.
+- **Old cards untested**: all the photos are of recent cards, whereas **47 % of
+  the index predates Sun & Moon**. The layouts of the Base, Neo or EX series
+  differ markedly — borders, artwork frame, strip position. Being in the index
+  proves nothing about recognition: coverage is a count, not a measurement.
+- **Reprints**: 92 % of cards share their name with another (Pikachu appears 99
+  times). It is the reason for the two confidence levels of §5.
+- **Language**: the index is in English, but French cards are recognized (the
+  artwork dominates the text by a wide margin). Untested on Japanese.
 
 ---
 
 ## 8. Performance
 
-Toutes les mesures ci-dessous ont été faites **sur Mac M3 Pro**, avec le
-`.mlpackage` de ce kit. Elles sont reprises dans `benchmarks.json` pour
-comparaison.
+All the measurements below were made **on a Mac M3 Pro**, with the `.mlpackage`
+of this kit. They are reproduced in `benchmarks.json` for comparison.
 
-### Sur iPhone 13 Pro
+### On an iPhone 13 Pro
 
-Portage Swift, photos 1080×1920 issues du flux vidéo, par appel :
+Swift port, 1080×1920 photos from the video stream, per call:
 
-| Étape | iPhone 13 Pro | Mac M3 Pro |
+| Step | iPhone 13 Pro | Mac M3 Pro |
 |---|---|---|
-| détection (les deux détecteurs) | 24 ms | 26 ms |
-| redressement | 6,4 ms | 2,9 ms |
-| OCR d'orientation | 11 ms | 9,5 ms |
-| prétraitement géométrique | 1,2 ms | 1,0 ms |
-| **embedding (Neural Engine)** | **5,5 ms** | **4,1 ms** |
-| recherche sur 20 512 vecteurs | 1,9 ms | 0,6 ms |
-| OCR du bandeau (`.accurate`) | 65 ms | 60 ms |
+| detection (both detectors) | 24 ms | 26 ms |
+| rectification | 6.4 ms | 2.9 ms |
+| orientation OCR | 11 ms | 9.5 ms |
+| geometric preprocessing | 1.2 ms | 1.0 ms |
+| **embedding (Neural Engine)** | **5.5 ms** | **4.1 ms** |
+| search over 20,512 vectors | 1.9 ms | 0.6 ms |
+| bottom-strip OCR (`.accurate`) | 65 ms | 60 ms |
 
-Le modèle tient donc largement la promesse du §9 sur du matériel réel.
+The model therefore comfortably keeps the promise of §9 on real hardware.
 
-Ces coûts sont **par appel** et n'ont pas bougé : c'est le nombre d'appels qui a
-changé (voir plus bas). L'OCR du bandeau ne se paie désormais qu'une fois sur
-cinq, la passe rapide traitant le reste à 12 ms.
+These costs are **per call** and have not moved: it is the number of calls that
+changed (see below). The bottom-strip OCR is now paid only one time in five, the
+fast pass handling the rest at 12 ms.
 
-⚠️ **Compiler le portage en `-O`, même en Debug.** Le reste de l'app peut rester
-non optimisé, pas ce code. Les deux boucles pixel par pixel — le filtre de
-variance et la rotation à 180° — coûtent **124 ms et 114 ms par crop** en
-`-Onone` contre moins d'une milliseconde optimisées. Sur huit crops, c'est 1,8 s
-d'un scan de 2,3 s, entièrement imputable à la configuration de build. Tout ce
-qui passe par Vision, Core ML ou Accelerate est insensible : ce sont des
-frameworks précompilés.
+⚠️ **Compile the port with `-O`, even in Debug.** The rest of the app can stay
+unoptimised, not this code. The two pixel-by-pixel loops — the variance filter
+and the 180° rotation — cost **124 ms and 114 ms per crop** in `-Onone` against
+under a millisecond optimised. Over eight crops, that is 1.8 s of a 2.3 s scan,
+entirely attributable to the build configuration. Anything going through Vision,
+Core ML or Accelerate is insensitive: those are precompiled frameworks.
 
-⚠️ **Le nombre de crops est le vrai poste de coût, pas le modèle.** Sans le
-filtre de surface du §2, une photo 12 Mpx produit jusqu'à **15 hypothèses**
-(8 quadrilatères dédoublonnés, dont plusieurs à orientation indécise qui comptent
-double), et chacune paie redressement, orientation et embedding. Avec le filtre :
-**2,4 en moyenne, 7 au pire**. Instrumenter par appel et non en cumul, sans quoi
-les chiffres ne veulent rien dire.
+⚠️ **The number of crops is the real cost item, not the model.** Without the area
+filter of §2, a 12-megapixel photo produces up to **15 hypotheses** (8
+deduplicated quadrilaterals, several of them with undecided orientation which
+count double), and each one pays rectification, orientation and embedding. With
+the filter: **2.4 on average, 7 at worst**. Instrument per call and not
+cumulatively, otherwise the figures mean nothing.
 
-### Le profil réel d'une photo
+### The real profile of a photo
 
-Mesuré sur les 32 photos du banc, encodeur Core ML, Mac M3 Pro, photos 12 Mpx —
-c'est le profil d'une **photo entière**, pas d'une identification à un seul crop.
-Reproductible avec `ml/scripts/profile_pipeline.py`.
+Measured over the 32 bench photos, Core ML encoder, Mac M3 Pro, 12-megapixel
+photos — this is the profile of a **whole photo**, not of a single-crop
+identification. Reproducible with `ml/scripts/profile_pipeline.py`.
 
-| Étape | ms par photo | appels par photo |
+| Step | ms per photo | calls per photo |
 |---|---|---|
-| embedding | 33,1 | 1,0 (par lot de variantes) |
-| décodage de la photo | 32,0 | 1,0 |
-| orientation (dont OCR) | 27,2 | 1,9 |
-| OCR du bandeau | 26,3 | 1,25 |
-| détection rectangles | 17,0 | 1,0 |
-| détection document | 13,3 | 1,0 |
-| recherche | 1,7 | 1,0 |
-| redressement | 1,4 | 2,0 |
+| embedding | 33.1 | 1.0 (per batch of variants) |
+| photo decoding | 32.0 | 1.0 |
+| orientation (incl. OCR) | 27.2 | 1.9 |
+| bottom-strip OCR | 26.3 | 1.25 |
+| rectangle detection | 17.0 | 1.0 |
+| document detection | 13.3 | 1.0 |
+| search | 1.7 | 1.0 |
+| rectification | 1.4 | 2.0 |
 | **total** | **159 ms** | |
 
-Trois choses à en retenir :
+Three things to take from it:
 
-- **Le point de départ était 287 ms.** Le filtre de surface en a retiré 37 %, la
-  cascade d'OCR du bandeau 8 % de plus, sans perdre une seule identification.
-- **La répartition « 79 % d'OCR » du kit précédent était vraie pour une
-  identification à un crop, pas pour une photo.** Sur une vraie photo, les deux
-  OCR pèsent 34 % — et le premier poste apparent, l'embedding, ne l'est que
-  parce qu'il était payé dix fois. Les deux ont la même cause : le nombre de
-  crops.
-- **Le décodage de la photo (32 ms) n'existe pas dans l'app.** C'est un artefact
-  du banc, qui part d'un JPEG sur disque ; une image de flux vidéo arrive déjà
-  décodée. À retrancher avant de comparer vos mesures aux nôtres.
+- **The starting point was 287 ms.** The area filter removed 37 % of it, the
+  bottom-strip OCR cascade 8 % more, without losing a single identification.
+- **The "79 % OCR" split of the previous kit was true for a single-crop
+  identification, not for a photo.** On a real photo, the two OCRs weigh 34 % —
+  and the apparent first item, the embedding, is only so because it was paid ten
+  times. The two have the same cause: the number of crops.
+- **The photo decoding (32 ms) does not exist in the app.** It is a bench
+  artefact, which starts from a JPEG on disk; a video-stream image arrives
+  already decoded. To subtract before comparing your measurements to ours.
 
-⚠️ **Ne pas réduire la photo d'entrée pour aller plus vite.** Testé : à 6 Mpx le
-décodage tombe de 38 à 11 ms mais le banc perd une carte, à 3 Mpx il en perd
-trois. Détecter sur une version réduite reste bon (§9) — ce qu'il ne faut pas
-réduire, c'est l'image dont on extrait le crop.
+⚠️ **Do not shrink the input photo to go faster.** Tested: at 6 megapixels the
+decoding drops from 38 to 11 ms but the bench loses one card, at 3 megapixels it
+loses three. Detecting on a shrunk version stays fine (§9) — what must not be
+shrunk is the image the crop is extracted from.
 
-⚠️ **Piège de coordonnées.** Si la détection lit le fichier et que le
-redressement travaille sur un tableau décodé séparément, les deux doivent avoir
-exactement la même résolution. En décalant les deux d'un facteur 2, le banc est
-tombé de 18/18 à 1/18 — **sans lever la moindre erreur**, les quadrilatères étant
-simplement appliqués dans le mauvais repère.
+⚠️ **Coordinate trap.** If the detection reads the file and the rectification
+works on a separately decoded array, the two must have exactly the same
+resolution. Shifting the two by a factor of 2, the bench dropped from 18/18 to
+1/18 — **with no error raised at all**, the quadrilaterals simply being applied
+in the wrong frame.
 
-### Sur Mac M3 Pro
+### On a Mac M3 Pro
 
-### Réglage obligatoire : forcer le Neural Engine
+### Mandatory setting: force the Neural Engine
 
 ```swift
 let config = MLModelConfiguration()
@@ -562,169 +547,163 @@ config.computeUnits = .cpuAndNeuralEngine
 let encoder = try CardEncoder(configuration: config)
 ```
 
-Laisser Core ML choisir seul (`.all`) coûte presque le double :
+Letting Core ML choose on its own (`.all`) costs almost double:
 
-| Unité de calcul | Latence | Débit |
+| Compute unit | Latency | Throughput |
 |---|---|---|
-| `.cpuAndNeuralEngine` | **3,3 ms** | 306 img/s |
-| `.all` | 5,7 ms | 175 img/s |
-| `.cpuAndGPU` | 8,7 ms | 115 img/s |
-| `.cpuOnly` | 22,7 ms | 44 img/s |
+| `.cpuAndNeuralEngine` | **3.3 ms** | 306 img/s |
+| `.all` | 5.7 ms | 175 img/s |
+| `.cpuAndGPU` | 8.7 ms | 115 img/s |
+| `.cpuOnly` | 22.7 ms | 44 img/s |
 
-### Coût de chaque étape
+### Cost of each step
 
-| Étape | Coût |
+| Step | Cost |
 |---|---|
-| détection document — 720p | 12,7 ms |
-| détection document — 1080p | 24,1 ms |
-| détection document — 12 Mpx | 113,5 ms |
-| détection rectangles — 720p | 17,9 ms |
-| redressement (homographie) | 0,5 ms |
-| prétraitement géométrique | 1,8 ms |
-| **embedding (Neural Engine)** | **3,3 ms** |
-| recherche sur 20 512 vecteurs | 0,5 ms |
-| OCR d'orientation | 16,1 ms |
-| OCR du bandeau — `.accurate` | 59,6 ms |
-| OCR du bandeau — `.fast`, agrandi ×2 | 12,0 ms |
-| OCR du bandeau — cascade, en moyenne | 24,0 ms |
+| document detection — 720p | 12.7 ms |
+| document detection — 1080p | 24.1 ms |
+| document detection — 12 Mpx | 113.5 ms |
+| rectangle detection — 720p | 17.9 ms |
+| rectification (homography) | 0.5 ms |
+| geometric preprocessing | 1.8 ms |
+| **embedding (Neural Engine)** | **3.3 ms** |
+| search over 20,512 vectors | 0.5 ms |
+| orientation OCR | 16.1 ms |
+| bottom-strip OCR — `.accurate` | 59.6 ms |
+| bottom-strip OCR — `.fast`, enlarged ×2 | 12.0 ms |
+| bottom-strip OCR — cascade, on average | 24.0 ms |
 
-### De bout en bout, depuis une image 720p
+### End to end, from a 720p image
 
-| | Coût |
+| | Cost |
 |---|---|
-| identification complète, OCR du bandeau compris | **~60 ms** (96 ms avant la cascade) |
-| identification sans OCR du bandeau | **36,5 ms** |
+| full identification, bottom-strip OCR included | **~60 ms** (96 ms before the cascade) |
+| identification without bottom-strip OCR | **36.5 ms** |
 
-Le total avec bandeau est déduit du tableau ci-dessus, la cascade coûtant 24 ms
-en moyenne au lieu de 59,6. Le profil mesuré de bout en bout, sur de vraies
-photos plutôt que sur une image 720p à un seul crop, est plus haut dans ce §8.
+The total with the strip is deduced from the table above, the cascade costing
+24 ms on average instead of 59.6. The end-to-end profile measured on real photos
+rather than a single-crop 720p image is higher up in this §8.
 
-La répartition reste le fait marquant : **le modèle pèse 5 % du total, les deux
-OCR en pèsent les deux tiers.** C'est ce qui dicte l'architecture du §9.
+The split remains the striking fact: **the model weighs 5 % of the total, the two
+OCRs weigh two thirds of it.** It is what dictates the architecture of §9.
 
 ---
 
-## 9. Flux vidéo en direct
+## 9. Live video stream
 
-Le modèle convient largement : **3,3 ms par image sur le Neural Engine**, soit
-306 images/s. Il représente 5 % du coût d'une identification. Le poste dominant
-reste l'OCR de Vision (les deux tiers).
+The model is more than suitable: **3.3 ms per frame on the Neural Engine**, i.e.
+306 frames/s. It represents 5 % of the cost of an identification. The dominant
+item stays Vision's OCR (two thirds).
 
-> ⚠️ **Ne pas passer à un modèle plus léger.** MobileCLIP2-S0 ferait gagner
-> environ 2 ms sur 60 et coûterait de la précision. Optimiser l'embedding, c'est
-> optimiser ce qui ne limite pas. Ce qui limite, c'est le nombre de crops (§2) et
-> la fréquence des OCR.
+> ⚠️ **Do not move to a lighter model.** MobileCLIP2-S0 would save about 2 ms out
+> of 60 and would cost precision. Optimising the embedding means optimising what
+> does not limit. What limits is the number of crops (§2) and the OCR frequency.
 
-### Répartition du travail
+### Splitting the work
 
-La règle : **ce qui coûte cher ne doit tourner qu'une fois par carte, jamais par
-image.**
+The rule: **what is costly must run only once per card, never per frame.**
 
-| Fréquence | Étapes | Coût |
+| Frequency | Steps | Cost |
 |---|---|---|
-| chaque image | détection du quadrilatère + suivi | 12,7 ms |
-| à l'apparition d'une carte | redressement, orientation, embedding, recherche | ~36 ms |
-| une fois, en tâche de fond | OCR du bandeau (confirme l'édition) | ~24 ms |
-| carte déjà identifiée et suivie | rien | 0 ms |
+| every frame | quadrilateral detection + tracking | 12.7 ms |
+| when a card appears | rectification, orientation, embedding, search | ~36 ms |
+| once, in the background | bottom-strip OCR (confirms the edition) | ~24 ms |
+| card already identified and tracked | nothing | 0 ms |
 
-À 30 images/s (33 ms par image), seule la détection tourne en continu : elle
-laisse 20 ms pour le rendu et le suivi. L'identification d'une nouvelle carte
-part sur une file d'arrière-plan — l'aperçu ne doit jamais l'attendre.
+At 30 frames/s (33 ms per frame), only the detection runs continuously: it leaves
+20 ms for rendering and tracking. The identification of a new card goes onto a
+background queue — the preview must never wait for it.
 
-### Ce qui fait la différence
+### What makes the difference
 
-- **Détecter à 720p, pas à la résolution photo.** 12,7 ms contre 113 ms en
-  12 Mpx, soit un facteur 9 pour un résultat équivalent : une carte occupe assez
-  de pixels à 720p. Le crop pour l'embedding, lui, peut être extrait du buffer
-  pleine résolution si disponible.
-- **Suivre les cartes entre les images** (IoU sur les boîtes, ou
-  `VNTrackObjectRequest`) pour ne ré-identifier que les nouvelles. En régime
-  stable, le coût retombe à la seule détection.
-- **N'utiliser que la segmentation document par image** (12,7 ms) et réserver le
-  détecteur de rectangles (17,9 ms) à l'identification.
-- **Stabiliser par vote** : plutôt qu'afficher le résultat de la première image,
-  accumuler 3 à 5 identifications d'une même carte suivie et retenir la
-  majoritaire. Gratuit, puisque la carte reste dans le champ.
+- **Detect at 720p, not at photo resolution.** 12.7 ms against 113 ms at 12
+  megapixels, i.e. a factor of 9 for an equivalent result: a card occupies enough
+  pixels at 720p. The crop for the embedding, meanwhile, can be extracted from
+  the full-resolution buffer if available.
+- **Track the cards between frames** (IoU on the boxes, or `VNTrackObjectRequest`)
+  to re-identify only the new ones. In steady state, the cost falls back to the
+  detection alone.
+- **Use only document segmentation per frame** (12.7 ms) and reserve the
+  rectangle detector (17.9 ms) for identification.
+- **Stabilize by vote**: rather than displaying the result of the first frame,
+  accumulate 3 to 5 identifications of one tracked card and keep the majority
+  one. Free, since the card stays in view.
 
-### Limite à connaître
+### Limit to know
 
-`VNDetectDocumentSegmentationRequest` ne renvoie **qu'un seul objet**. Pour
-plusieurs cartes simultanées, il faut passer par
-`VNDetectRectanglesRequest` — plus coûteux et moins fiable sur fond chargé (voir
-§7). Un flux « une carte à la fois » est le cas nominal ; le scan d'un étalage
-complet reste le cas difficile.
+`VNDetectDocumentSegmentationRequest` returns **only one object**. For several
+simultaneous cards, you have to go through `VNDetectRectanglesRequest` — more
+costly and less reliable on a busy background (see §7). A "one card at a time"
+stream is the nominal case; scanning a full display remains the hard case.
 
 ---
 
-## 10. Ce que le passage sur iPhone a appris
+## 10. What the move onto iPhone taught
 
-Trois choses que seul un vrai portage a fait apparaître. Elles ne sont pas dans
-`reference-python/`, qui reste par ailleurs la référence de comportement.
+Three things that only a real port brought out. They are not in
+`reference-python/`, which otherwise remains the behaviour reference.
 
-### La promotion par le bandeau ne suffit pas — il faut la recherche par numéro
+### Promotion by the strip is not enough — you need the number search
 
-L'étape 7 réordonne les candidats du top-k. Elle est donc impuissante dans un cas
-précis : **le numéro est lu proprement, la carte existe, et l'embedding ne l'a
-jamais fait remonter**. Mesuré sur une photo d'Inkay (`me5-51`), dont le bandeau
-a donné `051/084` trois fois de suite, pendant que le classement était mené par
-un Dresseur sans rapport situé **0,089 au-dessus**.
+Step 7 reorders the top-k candidates. It is therefore powerless in one precise
+case: **the number is read cleanly, the card exists, and the embedding never
+brought it up**. Measured on a photo of Inkay (`me5-51`), whose strip gave
+`051/084` three times in a row, while the ranking was led by an unrelated Trainer
+sitting **0.089 above**.
 
-Le correctif : si aucun candidat ne porte le numéro lu et qu'**une seule carte de
-tout l'index** le porte, aller la chercher directement. Un couple unique parmi
-20 512 identifie la carte sans discussion, et c'est une preuve plus forte que
-n'importe quel score de similarité. Se restreindre au cas unique n'est pas de la
-prudence sur la lecture : un numéro partagé par plusieurs tirages ne dit pas
-lequel c'est.
+The fix: if no candidate bears the read number and **a single card in the whole
+index** bears it, go and get it directly. A unique pair among 20,512 identifies
+the card without discussion, and it is a stronger proof than any similarity
+score. Restricting to the unique case is not caution about the reading: a number
+shared by several printings does not say which one it is.
 
-C'est le pendant positif du garde-fou « hors index » du §2 — la même table,
-utilisée pour trouver plutôt que pour disqualifier.
+It is the positive counterpart of the "out of index" safeguard of §2 — the same
+table, used to find rather than to disqualify.
 
-**Depuis, la fenêtre de recherche est passée de 10 à 20 candidats** (§6), ce qui
-règle la variante bénigne du même problème : une carte tombée juste sous la
-barre. Un Hariyama sortait au rang 12 avec son numéro parfaitement lisible.
-Élargir la fenêtre rend ce rattrapage moins souvent nécessaire, mais ne le
-remplace pas : le cas de l'Inkay, mené de 0,089 par un candidat sans rapport,
-n'est pas une affaire de deux ou trois rangs.
+**Since then, the search window has gone from 10 to 20 candidates** (§6), which
+settles the benign variant of the same problem: a card fallen just below the bar.
+A Hariyama came out at rank 12 with its number perfectly legible. Widening the
+window makes this recovery less often needed, but does not replace it: the Inkay
+case, led by 0.089 by an unrelated candidate, is not a matter of two or three
+ranks.
 
-⚠️ **Ce rattrapage ne couvre que 38 % des cartes.** 63 % des couples
-numéro/total sont uniques, mais ils ne concernent que 7833 cartes sur 20512 —
-les autres partagent leur couple avec jusqu'à 9 cartes, et un couple partagé ne
-désigne rien. Pour ces 62 %, une carte que la recherche visuelle manque reste
-manquée. C'est la limite à garder en tête avant de considérer le problème réglé :
-le correctif est utile, il n'est pas un filet.
+⚠️ **This recovery only covers 38 % of cards.** 63 % of number/total pairs are
+unique, but they concern only 7,833 cards out of 20,512 — the others share their
+pair with up to 9 cards, and a shared pair designates nothing. For those 62 %, a
+card the visual search misses stays missed. It is the limit to keep in mind
+before considering the problem settled: the fix is useful, it is not a net.
 
-### Le filtre de rééchantillonnage, côté Core Graphics
+### The resampling filter, on the Core Graphics side
 
-PIL n'a pas d'équivalent exact. Les quatre filtres, mesurés sur
-`test/reference_card.jpg` — qui est dans l'index, donc sa propre similarité est
-la note à battre (Python obtient 0,9951) :
+PIL has no exact equivalent. The four filters, measured on
+`test/reference_card.jpg` — which is in the index, so its own similarity is the
+score to beat (Python gets 0.9951):
 
-| filtre | similarité |
+| filter | similarity |
 |---|---|
-| `.medium` | **0,9938** |
-| `.high` | 0,9926 |
-| `.low` | 0,9854 |
-| `.none` | 0,9656 |
+| `.medium` | **0.9938** |
+| `.high` | 0.9926 |
+| `.low` | 0.9854 |
+| `.none` | 0.9656 |
 
-`.medium` gagne, et c'est aussi celui qui est bilinéaire plutôt que bicubique —
-la distinction que le §3 demande de respecter.
+`.medium` wins, and it is also the one that is bilinear rather than bicubic — the
+distinction §3 asks to respect.
 
-### Le simulateur iOS ne vaut rien pour juger la précision
+### The iOS Simulator is worthless for judging accuracy
 
-Core ML s'y comporte à l'identique (self-test à 0,9944 contre 0,9938 sur Mac),
-**mais pas Vision** : le segmenteur de document cadre autrement et le
-recognizer lit moins. Sur les trois fixtures du §6, une seule reproduit
-exactement, une perd son numéro de bandeau et une donne une mauvaise carte. Le
-simulateur sert à vérifier que le module charge et que la chaîne tourne ; la
-précision se juge sur appareil.
+Core ML behaves identically there (self-test at 0.9944 against 0.9938 on the
+Mac), **but not Vision**: the document segmenter frames differently and the
+recognizer reads less. On the three fixtures of §6, only one reproduces exactly,
+one loses its strip number and one gives a wrong card. The Simulator serves to
+check that the module loads and the chain runs; accuracy is judged on device.
 
 ---
 
-## 11. Mettre à jour l'index
+## 11. Updating the index
 
-Une nouvelle extension ne demande **aucun réentraînement** : il suffit de
-régénérer `index.bin` et `cards.json` et de les remplacer. Le modèle ne change
-pas. Cette régénération se fait côté projet ML, pas dans l'app.
+A new set requires **no retraining**: just regenerate `index.bin` and
+`cards.json` and replace them. The model does not change. This regeneration is
+done on the ML project side, not in the app.
 
-Prévoir que l'index puisse être téléchargé plutôt qu'embarqué, pour livrer une
-nouvelle extension sans passer par l'App Store.
+Plan for the index to be downloadable rather than bundled, to ship a new set
+without going through the App Store.

@@ -1,11 +1,11 @@
-# Photos d'évaluation
+# Evaluation photos
 
-Photos réelles prises à l'iPhone. C'est le seul jeu de test qui compte : les
-scans officiels sont dans l'index, donc les identifier ne prouve rien.
+Real photos taken with an iPhone. This is the only test set that matters: the
+official scans are in the index, so identifying them proves nothing.
 
-## Où déposer les fichiers
+## Where to put the files
 
-Un dossier par carte physique, dans `photos/` :
+One folder per physical card, in `photos/`:
 
 ```
 photos/
@@ -19,54 +19,54 @@ photos/
     ...
 ```
 
-**Nom du dossier** : ce qui est imprimé en bas de la carte, c'est-à-dire le
-numéro et le total (`58/102` → `58-102`), précédé du nom du Pokémon. Ça suffit à
-retrouver l'ID exact sans ambiguïté. Si le numéro est illisible ou absent
-(promos), mettez ce que vous pouvez, on résoudra au cas par cas.
+**Folder name**: what is printed at the bottom of the card, i.e. the number and
+the total (`58/102` → `58-102`), preceded by the Pokémon's name. That is enough
+to find the exact ID unambiguously. If the number is illegible or absent
+(promos), put what you can, we will resolve it case by case.
 
-**Nom du fichier** : le préfixe numéroté n'a pas d'importance, seul le mot-clé
-de condition compte (voir ci-dessous). Le format iPhone (HEIC) est accepté.
+**File name**: the numbered prefix does not matter, only the condition keyword
+counts (see below). The iPhone format (HEIC) is accepted.
 
-## Conditions à couvrir
+## Conditions to cover
 
-Par ordre d'importance. Les 5 premières suffisent pour un premier verdict.
+In order of importance. The first 5 are enough for a first verdict.
 
-| Mot-clé | Condition |
+| Keyword | Condition |
 |---|---|
-| `plat` | à plat, bien cadrée, lumière correcte — c'est la référence |
-| `incline` | vue de biais, 30-45°, forte perspective |
-| `pivote` | tournée dans le plan (45°, 90°, à l'envers) |
-| `reflet` | lumière crue ou fenêtre dans l'axe — le cas dur pour les holo |
-| `sombre` | lumière faible, ou carte à l'ombre |
-| `sleeve` | sous pochette plastique |
-| `loin` | carte petite dans le cadre (moins d'1/4 de l'image) |
-| `masque` | un coin ou un bord caché par un doigt / une autre carte |
-| `fond` | posée sur une table encombrée, fond chargé |
-| `flou` | léger bougé |
+| `plat` | flat, well framed, correct light — this is the reference |
+| `incline` | angled view, 30-45°, strong perspective |
+| `pivote` | rotated in the plane (45°, 90°, upside down) |
+| `reflet` | harsh light or a window in the axis — the hard case for holos |
+| `sombre` | low light, or card in the shade |
+| `sleeve` | in a plastic sleeve |
+| `loin` | card small in the frame (less than 1/4 of the image) |
+| `masque` | a corner or an edge hidden by a finger / another card |
+| `fond` | placed on a cluttered table, busy background |
+| `flou` | slight motion blur |
 
-## Quelles cartes choisir
+## Which cards to choose
 
-Le choix des cartes compte autant que celui des conditions :
+The choice of cards matters as much as the choice of conditions:
 
-- **2-3 holographiques ou reverse holo** — les reflets sont le cas le plus dur,
-  et l'index ne contient que des scans mats et parfaits.
-- **1-2 cartes très communes** (un Pikachu, un Dracaufeu de base). Ce sont
-  celles qui ont été réimprimées dans plusieurs sets, donc celles où
-  l'identification se joue à 0,02 d'écart.
-- **1-2 cartes récentes** (Scarlet & Violet ou plus récent) et **1-2 anciennes**
-  (Base, Neo, EX) — les mises en page diffèrent beaucoup.
-- **1 carte non française si vous en avez** : l'index est en anglais. Savoir si
-  une carte française est reconnue change le périmètre du projet.
+- **2-3 holographic or reverse holo** — reflections are the hardest case, and the
+  index only contains matte, perfect scans.
+- **1-2 very common cards** (a Pikachu, a base Charizard). These are the ones that
+  have been reprinted across several sets, so the ones where the identification
+  comes down to a 0.02 gap.
+- **1-2 recent cards** (Scarlet & Violet or more recent) and **1-2 old ones**
+  (Base, Neo, EX) — the layouts differ a lot.
+- **1 non-French card if you have one**: the index is in English. Knowing whether
+  a French card is recognized changes the scope of the project.
 
-## Combien
+## How many
 
-**Commencez petit : 2 ou 3 cartes avec les 5 premières conditions**, soit une
-quinzaine de photos. Ça valide le protocole et le nommage avant que vous y
-passiez une heure. On étend ensuite à une dizaine de cartes.
+**Start small: 2 or 3 cards with the first 5 conditions**, i.e. about fifteen
+photos. That validates the protocol and the naming before you spend an hour on
+it. We then extend to about ten cards.
 
-## Bonus utile plus tard
+## Useful bonus, later
 
-Quelques photos avec **plusieurs cartes visibles** (3-5 étalées sur une table,
-qui se chevauchent un peu). Elles ne servent pas à l'évaluation
-d'identification, mais elles diront si la détection de rectangles d'Apple suffit
-ou s'il faudra entraîner un YOLO. À déposer dans `photos/_multi/`.
+A few photos with **several cards visible** (3-5 spread on a table, overlapping a
+bit). They are not used for identification evaluation, but they will say whether
+Apple's rectangle detection is enough or whether a YOLO will have to be trained.
+To be put in `photos/_multi/`.

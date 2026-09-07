@@ -1,4 +1,4 @@
-<title>Scanner Pokémon TCG — rapport de tests</title>
+<title>Pokémon TCG Scanner — test report</title>
 <style>
   :root {
     --paper: #F2F4F6;
@@ -130,56 +130,55 @@
 <div class="wrap">
 
 <header class="col">
-  <p class="eyebrow">Scanner Pokémon TCG · rapport de tests · 6 août 2026</p>
-  <h1>La reconnaissance marche. C'est le cadrage qui décide.</h1>
-  <p class="lede">Quinze photos prises à l'iPhone ont été passées dans la chaîne complète.
-  Le modèle d'embedding n'est jamais le facteur limitant : sur un crop correct et à
-  l'endroit, la bonne carte sort en tête onze fois sur douze. Tout le reste du travail
-  se joue avant lui.</p>
+  <p class="eyebrow">Pokémon TCG Scanner · test report · 6 August 2026</p>
+  <h1>The recognition works. It is the framing that decides.</h1>
+  <p class="lede">Fifteen photos taken with an iPhone were run through the full chain.
+  The embedding model is never the limiting factor: on a correct, upright crop, the right
+  card comes out on top eleven times out of twelve. All the rest of the work happens
+  before it.</p>
 </header>
 
 <section>
-  <h2>Ce qui a été construit</h2>
+  <h2>What was built</h2>
   <div class="stats">
-    <div class="stat"><b>20 444</b><span>cartes en base, 174 sets jusqu'à juillet 2026</span></div>
-    <div class="stat"><b>20 394</b><span>images de référence en haute résolution, 5,5 Go</span></div>
-    <div class="stat"><b>42 Mo</b><span>index d'embeddings, 21 Mo en float16 pour iOS</span></div>
-    <div class="stat"><b>38 ms</b><span>par identification : 34 ms d'embedding, 4 ms de recherche</span></div>
+    <div class="stat"><b>20,444</b><span>cards in the base, 174 sets through July 2026</span></div>
+    <div class="stat"><b>20,394</b><span>high-resolution reference images, 5.5 GB</span></div>
+    <div class="stat"><b>42 MB</b><span>embedding index, 21 MB in float16 for iOS</span></div>
+    <div class="stat"><b>38 ms</b><span>per identification: 34 ms of embedding, 4 ms of search</span></div>
   </div>
   <div class="col">
-    <p>L'index est construit avec MobileCLIP2-S2, le modèle qu'Apple conçoit pour son
-    Neural Engine, en vecteurs de 512 dimensions. Sa construction complète prend six
-    minutes sur le M3 Pro. La recherche se fait par produit matriciel sur les 20 394
-    vecteurs, sans FAISS — à cette taille c'est exact et instantané, et surtout c'est
-    identique à ce que fera l'app via Accelerate.</p>
-    <p>Cinquante cartes n'ont pas d'image disponible sur le CDN officiel (promos
-    McDonald's), soit 0,24 % de la base.</p>
+    <p>The index is built with MobileCLIP2-S2, the model Apple designs for its Neural
+    Engine, in 512-dimension vectors. Its full construction takes six minutes on the
+    M3 Pro. The search is done by matrix product over the 20,394 vectors, without FAISS —
+    at this size it is exact and instant, and above all it is identical to what the app
+    will do via Accelerate.</p>
+    <p>Fifty cards have no image available on the official CDN (McDonald's promos), i.e.
+    0.24 % of the base.</p>
   </div>
 </section>
 
 <hr class="rule">
 
 <section>
-  <h2>Le protocole de test</h2>
+  <h2>The test protocol</h2>
   <div class="col">
-    <p>Quinze photos réelles, prises à l'iPhone dans des conditions volontairement
-    ordinaires : table en rotin, câbles, écran de portable, contre-jour, cartes tenues à
-    la main ou sous pochette. Toutes les cartes sont <b>françaises</b> alors que l'index
-    est en anglais.</p>
-    <p>La vérité terrain a été établie en lisant le nom, le numéro et le code de set
-    imprimés sur chaque carte, pas en faisant confiance au système. Deux cartes se sont
-    révélées absentes de l'index — leur set promo n'est pas couvert par la source de
-    données — et sont exclues du calcul plutôt que comptées comme des échecs. Une
-    seizième photo, montrant cinq cartes étalées, sert au test multi-cartes.</p>
+    <p>Fifteen real photos, taken with an iPhone in deliberately ordinary conditions:
+    rattan table, cables, laptop screen, backlight, cards held in the hand or in a sleeve.
+    All the cards are <b>French</b> whereas the index is in English.</p>
+    <p>The ground truth was established by reading the name, the number and the set code
+    printed on each card, not by trusting the system. Two cards turned out to be absent
+    from the index — their promo set is not covered by the data source — and are excluded
+    from the calculation rather than counted as failures. A sixteenth photo, showing five
+    cards spread out, is used for the multi-card test.</p>
   </div>
   <div class="scroll">
     <table>
-      <thead><tr><th>Couvert</th><th>Photos</th><th>Détail</th></tr></thead>
+      <thead><tr><th>Covered</th><th>Photos</th><th>Detail</th></tr></thead>
       <tbody>
-        <tr><td>Sets</td><td class="num">6</td><td>Pitch Black, Mega Evolution, Phantasmal Flames, Paldea Evolved, Twilight Masquerade, et un set promo non indexé</td></tr>
-        <tr><td>Types de carte</td><td class="num">4</td><td>cadre classique, illustration rare, full-art holo, dresseur</td></tr>
-        <tr><td>Conditions</td><td class="num">10</td><td>rotation, perspective, contre-jour, reflets holo, pochette, fond chargé, occlusion partielle, gros plan, carte lointaine, sur écran</td></tr>
-        <tr><td>Évaluables</td><td class="num">12</td><td>sur 14 photos mono-carte ; 2 cartes absentes de l'index</td></tr>
+        <tr><td>Sets</td><td class="num">6</td><td>Pitch Black, Mega Evolution, Phantasmal Flames, Paldea Evolved, Twilight Masquerade, and one non-indexed promo set</td></tr>
+        <tr><td>Card types</td><td class="num">4</td><td>classic frame, illustration rare, full-art holo, trainer</td></tr>
+        <tr><td>Conditions</td><td class="num">10</td><td>rotation, perspective, backlight, holo glare, sleeve, busy background, partial occlusion, close-up, distant card, on a screen</td></tr>
+        <tr><td>Evaluable</td><td class="num">12</td><td>out of 14 single-card photos; 2 cards absent from the index</td></tr>
       </tbody>
     </table>
   </div>
@@ -188,39 +187,39 @@
 <hr class="rule">
 
 <section>
-  <h2>Résultats</h2>
+  <h2>Results</h2>
   <div class="col">
-    <p>Chaque ligne isole l'apport d'une étape, mesurée sur les mêmes 12 photos.</p>
+    <p>Each row isolates the contribution of one step, measured on the same 12 photos.</p>
   </div>
   <div class="scroll">
     <table>
-      <thead><tr><th>Configuration</th><th>Top-1</th><th>Top-5</th><th>Ce que ça montre</th></tr></thead>
+      <thead><tr><th>Configuration</th><th>Top-1</th><th>Top-5</th><th>What it shows</th></tr></thead>
       <tbody>
-        <tr><td>Photo iPhone brute</td><td class="num">1/12</td><td class="num">1/12</td><td>sans cadrage, le vecteur décrit la table et le fond, pas la carte</td></tr>
-        <tr><td>Détecteur OpenCV maison</td><td class="num">6/12</td><td class="num">7/12</td><td>un Canny + contours suffit déjà à transformer le résultat</td></tr>
-        <tr><td>Vision d'Apple</td><td class="num">7/12</td><td class="num">9/12</td><td>trouve une carte sur toutes les photos, y compris à contre-jour</td></tr>
-        <tr><td>Vision, orientation corrigée</td><td class="num">9/12</td><td class="num">10/12</td><td>en écartant simplement la variante retournée</td></tr>
-        <tr><td>Choix parfait de variante</td><td class="num">11/12</td><td class="num">12/12</td><td>plafond atteignable sans toucher au modèle</td></tr>
+        <tr><td>Raw iPhone photo</td><td class="num">1/12</td><td class="num">1/12</td><td>without framing, the vector describes the table and the background, not the card</td></tr>
+        <tr><td>Home-grown OpenCV detector</td><td class="num">6/12</td><td class="num">7/12</td><td>a Canny + contours already transforms the result</td></tr>
+        <tr><td>Apple's Vision</td><td class="num">7/12</td><td class="num">9/12</td><td>finds a card on every photo, including backlit</td></tr>
+        <tr><td>Vision, orientation corrected</td><td class="num">9/12</td><td class="num">10/12</td><td>simply by discarding the flipped variant</td></tr>
+        <tr><td>Perfect choice of variant</td><td class="num">11/12</td><td class="num">12/12</td><td>ceiling reachable without touching the model</td></tr>
       </tbody>
     </table>
   </div>
   <div class="callout">
-    <h3>L'écart qui compte</h3>
-    <p>Entre les 7/12 actuels et les 11/12 du plafond, il n'y a aucun changement de
-    modèle, aucun réentraînement, aucune donnée supplémentaire. Uniquement le choix,
-    parmi les découpes déjà calculées, de la bonne. Le gain le plus important du projet
-    est aujourd'hui une question de logique de sélection.</p>
+    <h3>The gap that matters</h3>
+    <p>Between the current 7/12 and the 11/12 of the ceiling, there is no change of model,
+    no retraining, no additional data. Only the choice, among the crops already computed,
+    of the right one. The project's most important gain today is a question of selection
+    logic.</p>
   </div>
 </section>
 
 <hr class="rule">
 
 <section>
-  <h2>La marge est un signal de confiance fiable</h2>
+  <h2>The margin is a reliable confidence signal</h2>
   <div class="col">
-    <p>L'écart entre le premier et le deuxième candidat prédit la justesse presque
-    parfaitement. Classées par marge décroissante, les six premières identifications
-    sont toutes correctes.</p>
+    <p>The gap between the first and the second candidate predicts correctness almost
+    perfectly. Sorted by decreasing margin, the first six identifications are all
+    correct.</p>
   </div>
   <div class="chart">
     <div class="row"><span class="id">5025</span><div class="track"><div class="fill" style="width:97.7%"></div></div><span>0.1954</span><span class="verdict ok">correct</span></div>
@@ -229,65 +228,65 @@
     <div class="row"><span class="id">5027</span><div class="track"><div class="fill" style="width:33.5%"></div></div><span>0.0670</span><span class="verdict ok">correct</span></div>
     <div class="row"><span class="id">5019</span><div class="track"><div class="fill" style="width:22.0%"></div></div><span>0.0439</span><span class="verdict ok">correct</span></div>
     <div class="row"><span class="id">5022</span><div class="track"><div class="fill" style="width:20.7%"></div></div><span>0.0413</span><span class="verdict ok">correct</span></div>
-    <div class="row"><span class="id">5018</span><div class="track"><div class="fill miss" style="width:11.0%"></div></div><span>0.0220</span><span class="verdict no">faux</span></div>
-    <div class="row"><span class="id">5028</span><div class="track"><div class="fill miss" style="width:6.4%"></div></div><span>0.0128</span><span class="verdict no">rang 2</span></div>
-    <div class="row"><span class="id">5020</span><div class="track"><div class="fill miss" style="width:4.7%"></div></div><span>0.0093</span><span class="verdict no">faux</span></div>
-    <div class="row"><span class="id">5024</span><div class="track"><div class="fill miss" style="width:3.1%"></div></div><span>0.0061</span><span class="verdict no">rang 2</span></div>
+    <div class="row"><span class="id">5018</span><div class="track"><div class="fill miss" style="width:11.0%"></div></div><span>0.0220</span><span class="verdict no">wrong</span></div>
+    <div class="row"><span class="id">5028</span><div class="track"><div class="fill miss" style="width:6.4%"></div></div><span>0.0128</span><span class="verdict no">rank 2</span></div>
+    <div class="row"><span class="id">5020</span><div class="track"><div class="fill miss" style="width:4.7%"></div></div><span>0.0093</span><span class="verdict no">wrong</span></div>
+    <div class="row"><span class="id">5024</span><div class="track"><div class="fill miss" style="width:3.1%"></div></div><span>0.0061</span><span class="verdict no">rank 2</span></div>
     <div class="row"><span class="id">5031</span><div class="track"><div class="fill" style="width:3.0%"></div></div><span>0.0059</span><span class="verdict ok">correct</span></div>
-    <div class="row"><span class="id">5030</span><div class="track"><div class="fill miss" style="width:1.9%"></div></div><span>0.0037</span><span class="verdict no">faux</span></div>
+    <div class="row"><span class="id">5030</span><div class="track"><div class="fill miss" style="width:1.9%"></div></div><span>0.0037</span><span class="verdict no">wrong</span></div>
     <div class="chart-scale">
       <span></span>
       <div class="threshold">
         <div class="line" style="left:20%"></div>
-        <div class="tag" style="left:20%">seuil 0,04</div>
+        <div class="tag" style="left:20%">threshold 0.04</div>
       </div>
       <span></span><span></span>
     </div>
   </div>
   <div class="scroll">
     <table>
-      <thead><tr><th>Seuil sur la marge</th><th>Résultats retenus</th><th>Précision</th></tr></thead>
+      <thead><tr><th>Margin threshold</th><th>Results kept</th><th>Precision</th></tr></thead>
       <tbody>
-        <tr><td>≥ 0,04</td><td class="num">6/12</td><td class="num">100 %</td></tr>
-        <tr><td>≥ 0,02</td><td class="num">7/12</td><td class="num">86 %</td></tr>
-        <tr><td>aucun</td><td class="num">12/12</td><td class="num">58 %</td></tr>
+        <tr><td>≥ 0.04</td><td class="num">6/12</td><td class="num">100 %</td></tr>
+        <tr><td>≥ 0.02</td><td class="num">7/12</td><td class="num">86 %</td></tr>
+        <tr><td>none</td><td class="num">12/12</td><td class="num">58 %</td></tr>
       </tbody>
     </table>
   </div>
   <div class="col">
-    <p>Le score absolu, lui, ne discrimine rien. Le pire échec du jeu — Méga-Blizzaroi ex,
-    hors du top-5 — affiche le deuxième meilleur score de toutes les photos, à 0,8598.
-    S'y fier aurait produit une fausse certitude. La raison est structurelle : toutes les
-    cartes partagent une mise en page, donc deux cartes sans aucun rapport se ressemblent
-    déjà à environ 0,79. L'échelle utile va de 0,79 à 1, pas de 0 à 1.</p>
+    <p>The absolute score, for its part, discriminates nothing. The worst failure of the
+    set — Mega Blastoise ex, outside the top-5 — shows the second-best score of all the
+    photos, at 0.8598. Trusting it would have produced a false certainty. The reason is
+    structural: all cards share a layout, so two entirely unrelated cards already resemble
+    each other at about 0.79. The useful scale is 0.79 to 1, not 0 to 1.</p>
   </div>
 </section>
 
 <hr class="rule">
 
 <section>
-  <h2>Diagnostic des échecs</h2>
+  <h2>Failure diagnosis</h2>
   <div class="col">
-    <p>Classés par impact mesuré, pas par difficulté supposée. C'est cette liste qui doit
-    fixer l'ordre des travaux.</p>
+    <p>Sorted by measured impact, not by supposed difficulty. It is this list that should
+    fix the order of the work.</p>
   </div>
   <div class="findings">
 
     <div class="finding">
       <span class="rank">1</span>
       <div class="body">
-        <h3>La carte est redressée à l'envers</h3>
-        <p>Quatre des cinq échecs portent sur un crop retourné à 180°. En inspectant les
-        découpes retenues, la bonne orientation existait à chaque fois et obtenait un bon
-        score — elle a simplement perdu l'arbitrage. Onze des douze variantes idéales sont
-        à 0° : le redressement produit donc déjà la carte à l'endroit dans la quasi-totalité
-        des cas.</p>
-        <p>Écarter purement la variante 180° fait passer de 7/12 à 9/12, mais casserait une
-        carte réellement photographiée tête-bêche. La solution propre est de lire le sens du
-        texte sur la découpe.</p>
+        <h3>The card is rectified upside down</h3>
+        <p>Four of the five failures are on a crop flipped 180°. Inspecting the retained
+        crops, the right orientation existed every time and got a good score — it simply
+        lost the arbitration. Eleven of the twelve ideal variants are at 0°: the
+        rectification therefore already produces the card the right way up in almost every
+        case.</p>
+        <p>Simply discarding the 180° variant takes it from 7/12 to 9/12, but would break
+        a card actually photographed upside down. The clean solution is to read the
+        direction of the text on the crop.</p>
         <div class="tag-row">
-          <span class="chip gain">gain mesuré 7/12 → 9/12</span>
-          <span class="chip gain">plafond 11/12</span>
+          <span class="chip gain">measured gain 7/12 → 9/12</span>
+          <span class="chip gain">ceiling 11/12</span>
         </div>
       </div>
     </div>
@@ -295,15 +294,15 @@
     <div class="finding">
       <span class="rank">2</span>
       <div class="body">
-        <h3>Le mauvais quadrilatère est retenu</h3>
-        <p>Vision propose jusqu'à neuf rectangles par photo : la carte, mais aussi une dalle
-        de table, un écran, un bout de clavier. La règle actuelle retient celui qui maximise
-        score + marge, ce qui se fait parfois piéger par une découpe unie — un fragment de
-        table ressort nettement sur une carte Énergie, elle aussi presque unie.</p>
-        <p>Une contrainte de format aiderait : une carte fait 63 × 88 mm, soit un rapport de
-        0,716, et les découpes parasites s'en écartent souvent.</p>
+        <h3>The wrong quadrilateral is retained</h3>
+        <p>Vision proposes up to nine rectangles per photo: the card, but also a table
+        slab, a screen, a bit of keyboard. The current rule retains the one that maximizes
+        score + margin, which is sometimes fooled by a plain crop — a fragment of table
+        stands out clearly against an Energy card, itself almost plain.</p>
+        <p>An aspect-ratio constraint would help: a card is 63 × 88 mm, i.e. a ratio of
+        0.716, and the artefact crops often depart from it.</p>
         <div class="tag-row">
-          <span class="chip gain">gain restant 9/12 → 11/12</span>
+          <span class="chip gain">remaining gain 9/12 → 11/12</span>
         </div>
       </div>
     </div>
@@ -311,18 +310,18 @@
     <div class="finding">
       <span class="rank">3</span>
       <div class="body">
-        <h3>Deux cartes trop proches visuellement</h3>
-        <p>Cryodo 209/193 confondu avec Baxcalibur 210/193 : deux illustration rare
-        consécutives du même set, même style, la bonne réponse en rang 2 à 0,006 d'écart.
-        Même schéma pour Cadoizo, seul cas qui reste faux même avec un choix parfait de
-        découpe.</p>
-        <p>C'est la limite réelle de l'embedding global, et le seul point de cette liste qui
-        demande un vrai travail de modélisation. La piste prévue reste le re-ranking sur le
-        bandeau bas, qui porte le numéro et le symbole du set — c'est précisément ce qui
-        distingue ces cartes, et la raison pour laquelle les images haute résolution ont été
-        retenues.</p>
+        <h3>Two cards too visually close</h3>
+        <p>Cryogonal 209/193 confused with Baxcalibur 210/193: two consecutive illustration
+        rares from the same set, same style, the right answer at rank 2 with a 0.006 gap.
+        Same pattern for Golisopod, the only case that stays wrong even with a perfect
+        choice of crop.</p>
+        <p>This is the real limit of the global embedding, and the only point on this list
+        that requires genuine modelling work. The planned lead stays re-ranking on the
+        bottom strip, which carries the number and the set symbol — that is precisely what
+        distinguishes these cards, and the reason the high-resolution images were
+        chosen.</p>
         <div class="tag-row">
-          <span class="chip open">irréductible sans re-ranking</span>
+          <span class="chip open">irreducible without re-ranking</span>
         </div>
       </div>
     </div>
@@ -330,15 +329,15 @@
     <div class="finding">
       <span class="rank">4</span>
       <div class="body">
-        <h3>Les cartes qui se chevauchent ne sont pas séparées</h3>
-        <p>Sur une photo de cinq cartes dont quatre se recouvrent, une seule a été isolée —
-        la seule bien dégagée — mais elle a été correctement identifiée. Vision a besoin de
-        voir les quatre bords d'un rectangle fermé.</p>
-        <p>Pour un scan de collection, il faudra soit demander d'espacer les cartes, soit
-        entraîner le détecteur dédié prévu au plan B. C'est la seule question à laquelle ce
-        jeu de tests répond par la négative.</p>
+        <h3>Overlapping cards are not separated</h3>
+        <p>On a photo of five cards where four overlap, only one was isolated — the only
+        well-separated one — but it was correctly identified. Vision needs to see the four
+        edges of a closed rectangle.</p>
+        <p>For a collection scan, you will have to either ask for the cards to be spaced
+        out, or train the dedicated detector planned as plan B. It is the only question
+        this test set answers in the negative.</p>
         <div class="tag-row">
-          <span class="chip cost">1 carte détectée sur 5</span>
+          <span class="chip cost">1 card detected out of 5</span>
         </div>
       </div>
     </div>
@@ -346,14 +345,14 @@
     <div class="finding">
       <span class="rank">5</span>
       <div class="body">
-        <h3>Des cartes absentes de l'index</h3>
-        <p>Deux cartes sur quatorze appartiennent à un set promo que la source de données ne
-        couvre pas. Leur illustration a été comparée à toutes les variantes indexées : aucune
-        correspondance. Aucun modèle ne peut les trouver.</p>
-        <p>Ce n'est pas un problème de reconnaissance mais de fraîcheur des données, à
-        surveiller à chaque sortie de set.</p>
+        <h3>Cards absent from the index</h3>
+        <p>Two cards out of fourteen belong to a promo set the data source does not cover.
+        Their artwork was compared to every indexed variant: no match. No model can find
+        them.</p>
+        <p>This is not a recognition problem but a data-freshness one, to watch on every
+        set release.</p>
         <div class="tag-row">
-          <span class="chip cost">2 cartes sur 14 introuvables</span>
+          <span class="chip cost">2 cards out of 14 not findable</span>
         </div>
       </div>
     </div>
@@ -364,23 +363,22 @@
 <hr class="rule">
 
 <section>
-  <h2>Ce que les tests ont tranché</h2>
+  <h2>What the tests settled</h2>
   <div class="col">
     <ul>
-      <li><b>Les cartes françaises sont reconnues depuis un index anglais.</b> Funécire
-      ressort en Litwick à 0,873, Superdofin en Palafin à 0,871. L'illustration est
-      identique d'une langue à l'autre et pèse bien plus que le texte. Un index par langue
-      n'est pas nécessaire.</li>
-      <li><b>Le détecteur d'Apple suffit pour une carte isolée.</b> Il trouve la carte sur
-      les quinze photos, là où le détecteur maison en ratait trois. Le modèle de détection
-      dédié envisagé au départ n'est nécessaire que pour le cas multi-cartes.</li>
-      <li><b>Les full-art holo ne sont pas un point faible.</b> Une première lecture les
-      accusait ; l'inspection des découpes a montré que leurs échecs venaient de
-      l'orientation. La carte qui obtient la meilleure marge de tout le jeu est elle-même
-      une full-art.</li>
-      <li><b>Le modèle d'embedding n'a pas besoin d'être changé pour l'instant.</b> Le
-      plafond de 11/12 est atteint avec MobileCLIP2-S2 tel quel. Comparer d'autres modèles
-      avant d'avoir réglé le cadrage reviendrait à optimiser ce qui ne limite pas.</li>
+      <li><b>French cards are recognized from an English index.</b> Funécire comes out as
+      Litwick at 0.873, Superdofin as Palafin at 0.871. The artwork is identical from one
+      language to the other and weighs far more than the text. A per-language index is not
+      needed.</li>
+      <li><b>Apple's detector is enough for an isolated card.</b> It finds the card on all
+      fifteen photos, where the home-grown detector missed three. The dedicated detection
+      model considered at the start is only needed for the multi-card case.</li>
+      <li><b>Full-art holos are not a weak point.</b> A first reading blamed them;
+      inspecting the crops showed their failures came from the orientation. The card that
+      gets the best margin of the whole set is itself a full-art.</li>
+      <li><b>The embedding model does not need to be changed for now.</b> The ceiling of
+      11/12 is reached with MobileCLIP2-S2 as is. Comparing other models before the framing
+      is fixed would amount to optimizing what does not limit.</li>
     </ul>
   </div>
 </section>
@@ -388,20 +386,20 @@
 <hr class="rule">
 
 <section>
-  <h2>Ce qui reste ouvert</h2>
+  <h2>What stays open</h2>
   <div class="col">
     <ul>
-      <li><b>Douze photos, c'est peu.</b> Les écarts d'une ou deux photos ne sont pas
-      significatifs, et le seuil de 0,04 sur la marge demande à être confirmé sur un
-      échantillon plus large avant d'être câblé dans l'app.</li>
-      <li><b>Aucune carte réimprimée dans plusieurs sets n'a été testée.</b> C'est pourtant
-      le cas de confusion identifié dès le départ, mesuré à 0,021 d'écart entre le Pikachu
-      Base et sa réimpression Base Set 2.</li>
-      <li><b>Aucune carte ancienne n'a été testée.</b> Toutes les photos portent sur des
-      cartes récentes ; les mises en page des séries Base, Neo ou EX sont très différentes.</li>
-      <li><b>Rien n'a encore tourné sur iPhone.</b> Vision a été piloté depuis Python via
-      PyObjC, ce qui valide l'API mais pas les performances embarquées ni la conversion Core
-      ML du modèle d'embedding.</li>
+      <li><b>Twelve photos is few.</b> Gaps of one or two photos are not significant, and
+      the 0.04 margin threshold needs to be confirmed on a larger sample before being
+      wired into the app.</li>
+      <li><b>No card reprinted across several sets was tested.</b> Yet it is the confusion
+      case identified from the start, measured at a 0.021 gap between the Base Pikachu and
+      its Base Set 2 reprint.</li>
+      <li><b>No old card was tested.</b> All the photos are of recent cards; the layouts of
+      the Base, Neo or EX series are very different.</li>
+      <li><b>Nothing has run on an iPhone yet.</b> Vision was driven from Python via
+      PyObjC, which validates the API but not the on-device performance or the Core ML
+      conversion of the embedding model.</li>
     </ul>
   </div>
 </section>
@@ -409,8 +407,8 @@
 <hr class="rule">
 
 <footer class="col">
-  <p>Mesures reproductibles avec <code>scripts/evaluate_real.py</code>. La vérité terrain
-  des photos est dans <code>data/eval/truth.json</code>, établie à la lecture des cartes.</p>
+  <p>Measurements reproducible with <code>scripts/evaluate_real.py</code>. The ground truth
+  of the photos is in <code>data/eval/truth.json</code>, established by reading the cards.</p>
 </footer>
 
 </div>

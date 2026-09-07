@@ -1,4 +1,4 @@
-<title>Scanner Pokémon TCG — plan d'amélioration</title>
+<title>Pokémon TCG Scanner — improvement plan</title>
 <style>
   :root {
     --paper: #F2F4F6;
@@ -109,48 +109,49 @@
 <div class="wrap">
 
 <header class="col">
-  <p class="eyebrow">Scanner Pokémon TCG · plan d'amélioration · 6 août 2026</p>
-  <h1>Cinq chantiers, aucun réentraînement.</h1>
-  <p class="lede">Ce plan découle du rapport de tests et d'un second lot de sept photos qui
-  porte le jeu à 21. Le plafond mesuré est de 17/18 avec le modèle actuel : tout le plan
-  vise à combler l'écart entre les 13/18 d'aujourd'hui et ce plafond, puis à fiabiliser ce
-  que le plafond ne couvre pas — l'édition exacte de la carte.</p>
+  <p class="eyebrow">Pokémon TCG Scanner · improvement plan · 6 August 2026</p>
+  <h1>Five tasks, no retraining.</h1>
+  <p class="lede">This plan follows from the test report and a second batch of seven photos
+  that brings the set to 21. The measured ceiling is 17/18 with the current model: the whole
+  plan aims to close the gap between today's 13/18 and that ceiling, then to make reliable
+  what the ceiling does not cover — the card's exact edition.</p>
 </header>
 
 <section>
-  <h2>Ce que le second lot a changé</h2>
+  <h2>What the second batch changed</h2>
   <div class="stats">
-    <div class="stat"><b>7/7</b><span>nouvelles photos en top-1 : cartes espacées, même inclinées, même secrètes</span></div>
-    <div class="stat"><b>13/18</b><span>top-1 sur le jeu complet (15/18 en top-5)</span></div>
-    <div class="stat"><b>17/18</b><span>plafond avec choix parfait de la découpe, modèle inchangé</span></div>
-    <div class="stat"><b>3/21</b><span>cartes photographiées absentes de l'index</span></div>
+    <div class="stat"><b>7/7</b><span>new photos in top-1: spaced cards, even tilted, even secret</span></div>
+    <div class="stat"><b>13/18</b><span>top-1 on the full set (15/18 in top-5)</span></div>
+    <div class="stat"><b>17/18</b><span>ceiling with a perfect choice of crop, model unchanged</span></div>
+    <div class="stat"><b>3/21</b><span>photographed cards absent from the index</span></div>
   </div>
   <div class="col">
-    <p>Trois faits nouveaux réorientent le plan par rapport au rapport initial.</p>
+    <p>Three new facts reorient the plan relative to the initial report.</p>
     <ul>
-      <li><b>La variante 180° sert réellement.</b> Trois photos correctes du jeu (5031, 5032,
-      5037) n'ont été identifiées que grâce à elle : le redressement sort parfois la carte
-      tête-bêche. L'astuce « supprimer la variante 180° » mesurée à +2 sur le premier lot
-      aurait cassé ces trois-là. La vraie solution est de lire le sens du texte.</li>
-      <li><b>Une marge faible ne veut pas toujours dire « faux » : elle veut souvent dire
-      « bonne carte, édition incertaine ».</b> Colossinge est correct à 0,0304 de marge — ses
-      seuls concurrents sont d'autres Primeape d'autres sets. L'Énergie Eau est identifiée à
-      0,0159 — tous les candidats sont des Énergies Eau. La confusion se concentre presque
-      entièrement <em>à l'intérieur du même nom de carte</em>.</li>
-      <li><b>L'OCR du bandeau bas fonctionne, testé avec l'API exacte d'iOS.</b>
-      <code>VNRecognizeTextRequest</code> en mode rapide lit « 043/084 » et « 152/132 » (avec
-      des confusions 7↔1 corrigeables, car les couples numéro/total valides sont connus). Et
-      il lit 6 chaînes à l'endroit contre 1 à 2 à l'envers : le volume de texte reconnu est à
-      lui seul un détecteur d'orientation.</li>
+      <li><b>The 180° variant genuinely serves a purpose.</b> Three correct photos of the set
+      (5031, 5032, 5037) were only identified thanks to it: the rectification sometimes puts
+      the card upside down. The "remove the 180° variant" trick measured at +2 on the first
+      batch would have broken those three. The real solution is to read the direction of the
+      text.</li>
+      <li><b>A low margin does not always mean "wrong": it often means "right card, uncertain
+      edition".</b> Primeape is correct at a 0.0304 margin — its only competitors are other
+      Primeapes from other sets. Water Energy is identified at 0.0159 — all the candidates are
+      Water Energies. The confusion is concentrated almost entirely <em>within the same card
+      name</em>.</li>
+      <li><b>The bottom-strip OCR works, tested with the exact iOS API.</b>
+      <code>VNRecognizeTextRequest</code> in fast mode reads "043/084" and "152/132" (with
+      7↔1 confusions that are correctable, since the valid number/total pairs are known). And
+      it reads 6 strings the right way up against 1 to 2 upside down: the volume of
+      recognized text is on its own an orientation detector.</li>
     </ul>
   </div>
   <div class="scroll">
     <table>
-      <thead><tr><th>Seuil sur la marge</th><th>Retenues (sur 18)</th><th>Précision</th></tr></thead>
+      <thead><tr><th>Margin threshold</th><th>Kept (out of 18)</th><th>Precision</th></tr></thead>
       <tbody>
-        <tr><td>≥ 0,03</td><td class="num">12</td><td class="num">100 %</td></tr>
-        <tr><td>≥ 0,02</td><td class="num">13</td><td class="num">92 %</td></tr>
-        <tr><td>aucun</td><td class="num">18</td><td class="num">72 %</td></tr>
+        <tr><td>≥ 0.03</td><td class="num">12</td><td class="num">100 %</td></tr>
+        <tr><td>≥ 0.02</td><td class="num">13</td><td class="num">92 %</td></tr>
+        <tr><td>none</td><td class="num">18</td><td class="num">72 %</td></tr>
       </tbody>
     </table>
   </div>
@@ -159,25 +160,25 @@
 <hr class="rule">
 
 <section>
-  <h2>Les chantiers, par rapport gain/effort</h2>
+  <h2>The tasks, by gain/effort ratio</h2>
   <div class="findings">
 
     <div class="finding">
       <span class="rank">A</span>
       <div class="body">
-        <h3>Orientation par lecture du texte</h3>
-        <p>Sur chaque découpe redressée, lancer une reconnaissance de texte rapide sur les
-        deux orientations et garder celle qui lit le plus de chaînes. Mesuré sur trois
-        cartes : 6 chaînes à l'endroit contre 1–2 à l'envers, sans exception. Coût estimé
-        10–20 ms, une fois par carte trackée — pas par frame.</p>
-        <p>Remplace l'arbitrage actuel score+marge entre 0° et 180°, responsable des trois
-        échecs 5018, 5020 et 5030 (et du rang 2 de 5024).</p>
-        <p class="crit"><b>Critère de sortie :</b> les trois échecs d'orientation passent en
-        top-1 sans casser 5031, 5032 ni 5037. Attendu : 13/18 → 16/18.</p>
+        <h3>Orientation by text reading</h3>
+        <p>On each rectified crop, run a fast text recognition on both orientations and keep
+        the one that reads the most strings. Measured on three cards: 6 strings the right way
+        up against 1–2 upside down, without exception. Estimated cost 10–20 ms, once per
+        tracked card — not per frame.</p>
+        <p>Replaces the current score+margin arbitration between 0° and 180°, responsible for
+        the three failures 5018, 5020 and 5030 (and the rank 2 of 5024).</p>
+        <p class="crit"><b>Exit criterion:</b> the three orientation failures move to top-1
+        without breaking 5031, 5032 or 5037. Expected: 13/18 → 16/18.</p>
         <div class="tag-row">
-          <span class="chip gain">gain attendu +3</span>
-          <span class="chip info">dérisqué par test OCR</span>
-          <span class="chip info">effort : faible</span>
+          <span class="chip gain">expected gain +3</span>
+          <span class="chip info">de-risked by OCR test</span>
+          <span class="chip info">effort: low</span>
         </div>
       </div>
     </div>
@@ -185,17 +186,17 @@
     <div class="finding">
       <span class="rank">B</span>
       <div class="body">
-        <h3>Filtrage des quadrilatères avant embedding</h3>
-        <p>La bonne découpe existe dans 17 cas sur 18 ; quand elle perd, c'est face à un
-        parasite. Trois filtres avant d'encoder : rapport petit/grand côté proche de 0,716
-        (une carte fait 63 × 88 mm), aire minimale, et rejet des découpes quasi-unies
-        (variance de pixels faible — un bout de table ne contient pas d'illustration). Moins
-        de candidats, c'est aussi moins d'embeddings à calculer par frame.</p>
-        <p class="crit"><b>Critère de sortie :</b> atteindre le plafond de 17/18, et
-        division par deux du nombre de variantes encodées.</p>
+        <h3>Filtering the quadrilaterals before embedding</h3>
+        <p>The right crop exists in 17 cases out of 18; when it loses, it is against an
+        artefact. Three filters before encoding: short/long side ratio close to 0.716 (a card
+        is 63 × 88 mm), minimum area, and rejection of near-plain crops (low pixel variance —
+        a bit of table contains no artwork). Fewer candidates also means fewer embeddings to
+        compute per frame.</p>
+        <p class="crit"><b>Exit criterion:</b> reach the ceiling of 17/18, and halve the
+        number of encoded variants.</p>
         <div class="tag-row">
-          <span class="chip gain">gain attendu +1</span>
-          <span class="chip info">effort : faible</span>
+          <span class="chip gain">expected gain +1</span>
+          <span class="chip info">effort: low</span>
         </div>
       </div>
     </div>
@@ -203,20 +204,20 @@
     <div class="finding">
       <span class="rank">C</span>
       <div class="body">
-        <h3>Confiance à deux niveaux : le nom, puis l'édition</h3>
-        <p>Câbler la décision produit sur deux marges distinctes. La marge classique
-        (1er contre 2e candidat) valide l'<em>édition</em> ; la marge au premier candidat
-        d'un <em>nom différent</em> valide l'identité. Sur le jeu actuel, un seuil de 0,03
-        sur la première donne 100 % de précision, et la seconde récupère en plus les cas
-        « bonne carte, édition ambiguë » comme Colossinge.</p>
-        <p>Côté interface : au-dessus des deux seuils, résultat ferme ; identité sûre mais
-        édition ambiguë, afficher « Primeape — édition à confirmer » ; en dessous, top-5 ou
-        demande de stabiliser. Ne jamais afficher le score absolu, qui ne discrimine rien.</p>
-        <p class="crit"><b>Critère de sortie :</b> zéro identification fausse affichée comme
-        ferme sur le jeu de test, seuils reconfirmés sur au moins 40 photos.</p>
+        <h3>Two-level confidence: the name, then the edition</h3>
+        <p>Wire the product decision on two distinct margins. The classic margin (1st vs 2nd
+        candidate) validates the <em>edition</em>; the margin to the first candidate of a
+        <em>different name</em> validates the identity. On the current set, a threshold of
+        0.03 on the first gives 100 % precision, and the second additionally recovers the
+        "right card, ambiguous edition" cases like Primeape.</p>
+        <p>On the interface side: above both thresholds, firm result; identity sure but
+        edition ambiguous, display "Primeape — edition to confirm"; below, top-5 or a request
+        to steady the shot. Never display the absolute score, which discriminates nothing.</p>
+        <p class="crit"><b>Exit criterion:</b> zero wrong identification displayed as firm on
+        the test set, thresholds reconfirmed on at least 40 photos.</p>
         <div class="tag-row">
-          <span class="chip gain">fiabilité produit</span>
-          <span class="chip info">effort : faible</span>
+          <span class="chip gain">product reliability</span>
+          <span class="chip info">effort: low</span>
         </div>
       </div>
     </div>
@@ -224,23 +225,23 @@
     <div class="finding">
       <span class="rank">D</span>
       <div class="body">
-        <h3>Lecture du bandeau bas : édition exacte et cartes hors index</h3>
-        <p>Sur la découpe validée, OCR du bandeau inférieur (« 043/084 », code set) et
-        correspondance floue contre les couples numéro/total connus — les confusions 7↔1
-        et 2↔) observées se corrigent car l'espace des valeurs valides est fermé. C'est la
-        raison d'être des images haute résolution téléchargées en phase 1.</p>
-        <p>Règle d'un coup quatre problèmes : le seul échec irréductible du jeu (Cadoizo,
-        rang 2 face à une illustration identique), les réimpressions à 0,02 d'écart type
-        Pikachu Base / Base Set 2, l'attribution de set des cartes Énergie, et la détection
-        des cartes hors index — un numéro lu qui ne correspond à aucune carte connue du set
-        signale « carte inconnue » au lieu d'une fausse attribution confiante.</p>
-        <p class="crit"><b>Critère de sortie :</b> édition correcte sur les cas à marge
-        faible du jeu, et l'Énergie MEG 003 signalée hors index au lieu d'attribuée à
-        Paldea Evolved.</p>
+        <h3>Reading the bottom strip: exact edition and cards out of index</h3>
+        <p>On the validated crop, OCR of the bottom strip ("043/084", set code) and fuzzy
+        matching against the known number/total pairs — the observed 7↔1 and 2↔) confusions
+        are corrected because the space of valid values is closed. It is the reason the
+        high-resolution images were downloaded in phase 1.</p>
+        <p>Settles four problems at once: the set's only irreducible failure (Golisopod,
+        rank 2 against an identical artwork), the reprints at a 0.02 gap like Base Pikachu /
+        Base Set 2, the set attribution of Energy cards, and the detection of cards out of
+        index — a read number that matches no known card of the set signals "unknown card"
+        instead of a confident wrong attribution.</p>
+        <p class="crit"><b>Exit criterion:</b> correct edition on the set's low-margin cases,
+        and MEG 003 Energy flagged as out of index instead of attributed to Paldea
+        Evolved.</p>
         <div class="tag-row">
-          <span class="chip gain">règle le dernier échec du plafond</span>
-          <span class="chip open">précision OCR à confirmer en mode accurate</span>
-          <span class="chip info">effort : moyen</span>
+          <span class="chip gain">settles the ceiling's last failure</span>
+          <span class="chip open">OCR precision to confirm in accurate mode</span>
+          <span class="chip info">effort: medium</span>
         </div>
       </div>
     </div>
@@ -248,18 +249,18 @@
     <div class="finding">
       <span class="rank">E</span>
       <div class="body">
-        <h3>Combler et rafraîchir l'index</h3>
-        <p>Trois cartes photographiées sur vingt-et-une sont absentes de
-        <code>pokemon-tcg-data</code> : deux promos « MEP » et l'Énergie de base des sets
-        Mega Evolution. Évaluer une source complémentaire pour les promos et énergies
-        récentes (l'API pokemontcg.io en direct, ou TCGdex qui couvre bien les sorties
-        européennes), puis automatiser la chaîne déjà en place — métadonnées, images,
-        embeddings, export — en un job unique à relancer à chaque sortie de set.</p>
-        <p class="crit"><b>Critère de sortie :</b> les trois cartes absentes deviennent
-        identifiables ; reconstruction complète de l'index en une commande.</p>
+        <h3>Fill and refresh the index</h3>
+        <p>Three photographed cards out of twenty-one are absent from
+        <code>pokemon-tcg-data</code>: two "MEP" promos and the base Energy of the Mega
+        Evolution sets. Evaluate a complementary source for the recent promos and energies
+        (the pokemontcg.io API directly, or TCGdex which covers European releases well), then
+        automate the chain already in place — metadata, images, embeddings, export — into a
+        single job to rerun on every set release.</p>
+        <p class="crit"><b>Exit criterion:</b> the three absent cards become identifiable;
+        full rebuild of the index in one command.</p>
         <div class="tag-row">
-          <span class="chip cost">3/21 introuvables aujourd'hui</span>
-          <span class="chip info">effort : moyen</span>
+          <span class="chip cost">3/21 not findable today</span>
+          <span class="chip info">effort: medium</span>
         </div>
       </div>
     </div>
@@ -270,23 +271,21 @@
 <hr class="rule">
 
 <section>
-  <h2>Ce qu'on ne fait pas, et pourquoi</h2>
+  <h2>What we are not doing, and why</h2>
   <div class="col">
     <ul>
-      <li><b>Changer de modèle d'embedding.</b> Le plafond de 17/18 est atteint avec
-      MobileCLIP2-S2 tel quel. Comparer DINOv2 ou un autre encodeur avant d'avoir épuisé
-      les chantiers A et B reviendrait à optimiser ce qui ne limite pas — à re-tester
-      seulement si le plafond résiste.</li>
-      <li><b>Entraîner un YOLO maintenant.</b> Une seule photo du jeu l'exigerait (cinq
-      cartes qui se chevauchent). Le mode « scan de collection » peut commencer par une
-      consigne d'espacement ; le détecteur dédié reste le plan B, déclenché par l'usage
-      réel, pas par anticipation.</li>
-      <li><b>Construire un index par langue.</b> Dix-huit cartes françaises sur dix-huit
-      identifiables l'ont été depuis l'index anglais. Le chantier D renforce encore ce
-      point en s'appuyant sur les numéros, identiques d'une langue à l'autre.</li>
-      <li><b>Entraîner un classifieur.</b> Toujours exclu : l'architecture
-      détection + embedding + recherche absorbe une nouvelle extension par simple
-      reconstruction de l'index (chantier E).</li>
+      <li><b>Changing the embedding model.</b> The ceiling of 17/18 is reached with
+      MobileCLIP2-S2 as is. Comparing DINOv2 or another encoder before tasks A and B are
+      exhausted would amount to optimizing what does not limit — to be re-tested only if the
+      ceiling holds.</li>
+      <li><b>Training a YOLO now.</b> A single photo of the set would require it (five
+      overlapping cards). The "collection scan" mode can start with a spacing instruction;
+      the dedicated detector stays plan B, triggered by real use, not by anticipation.</li>
+      <li><b>Building a per-language index.</b> Eighteen identifiable French cards out of
+      eighteen were identified from the English index. Task D reinforces this point further
+      by relying on the numbers, identical from one language to the other.</li>
+      <li><b>Training a classifier.</b> Still ruled out: the detection + embedding + search
+      architecture absorbs a new set by a simple index rebuild (task E).</li>
     </ul>
   </div>
 </section>
@@ -294,35 +293,33 @@
 <hr class="rule">
 
 <section>
-  <h2>Séquence et bascule vers l'app</h2>
+  <h2>Sequence and switch to the app</h2>
   <div class="col">
-    <p>Les chantiers A, B et C sont indépendants, petits, et se valident tous contre le
-    même banc d'essai (<code>evaluate_real.py</code>) : c'est la première salve, en Python.
-    D suit, car il dépend de la découpe stabilisée par A et B. E avance en parallèle,
-    c'est de la donnée, pas du code de reconnaissance.</p>
-    <p>La bascule vers l'app iOS (conversion Core ML, app photo-vers-carte du plan
-    initial) se déclenche quand deux conditions sont réunies : <b>16/18 ou mieux</b> sur le
-    banc d'essai, et la <b>parité Core ML vérifiée</b> (similarité &gt; 0,99 entre
-    l'embedding PyTorch et l'embedding converti). Tout le pipeline validé ici — Vision,
-    redressement, OCR — utilise déjà les API du téléphone : le portage est une traduction,
-    pas une réinvention.</p>
+    <p>Tasks A, B and C are independent, small, and all validate against the same test bench
+    (<code>evaluate_real.py</code>): it is the first salvo, in Python. D follows, since it
+    depends on the crop stabilized by A and B. E advances in parallel, it is data, not
+    recognition code.</p>
+    <p>The switch to the iOS app (Core ML conversion, photo-to-card app of the initial plan)
+    triggers when two conditions are met: <b>16/18 or better</b> on the test bench, and the
+    <b>Core ML parity verified</b> (similarity &gt; 0.99 between the PyTorch embedding and
+    the converted embedding). The whole pipeline validated here — Vision, rectification, OCR
+    — already uses the phone's APIs: the port is a translation, not a reinvention.</p>
   </div>
   <div class="callout">
-    <h3>Le risque principal</h3>
-    <p>Dix-huit photos restent un petit échantillon, concentré sur des cartes récentes
-    d'un même joueur. Les seuils (0,03 de marge, volume de texte pour l'orientation)
-    doivent être reconfirmés au fil de l'eau : chaque nouveau lot de photos passe dans le
-    banc d'essai avant d'ajuster quoi que ce soit. Manquent encore : cartes anciennes
-    (Base, Neo, EX), cartes très abîmées, et le même Pokémon réimprimé photographié dans
-    deux sets différents.</p>
+    <h3>The main risk</h3>
+    <p>Eighteen photos remain a small sample, concentrated on recent cards from one player.
+    The thresholds (0.03 margin, text volume for the orientation) must be reconfirmed as we
+    go: every new batch of photos goes through the test bench before adjusting anything.
+    Still missing: old cards (Base, Neo, EX), very damaged cards, and the same reprinted
+    Pokémon photographed in two different sets.</p>
   </div>
 </section>
 
 <hr class="rule">
 
 <footer class="col">
-  <p>Compagnon du rapport de tests. Mesures reproductibles avec
-  <code>scripts/evaluate_real.py</code> ; vérité terrain des 21 photos dans
+  <p>Companion to the test report. Measurements reproducible with
+  <code>scripts/evaluate_real.py</code>; ground truth of the 21 photos in
   <code>data/eval/truth.json</code>.</p>
 </footer>
 

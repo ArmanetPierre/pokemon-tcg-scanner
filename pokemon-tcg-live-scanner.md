@@ -1,30 +1,30 @@
 # Pokémon TCG Live Scanner
 
-## 1. Objectif
+## 1. Goal
 
-Construire une application capable de reconnaître automatiquement des cartes Pokémon TCG à partir d'un **flux caméra en temps réel**.
+Build an application able to automatically recognize Pokémon TCG cards from a **real-time camera stream**.
 
-L'utilisateur filme une table contenant une ou plusieurs cartes. L'application doit :
+The user films a table containing one or more cards. The application must:
 
-1. détecter les cartes présentes dans l'image ;
-2. corriger leur perspective ;
-3. identifier chaque carte parmi l'ensemble des cartes Pokémon TCG connues ;
-4. suivre les cartes entre les frames pour éviter de refaire inutilement l'identification ;
-5. afficher le nom, le set, le numéro et le niveau de confiance ;
-6. à terme, permettre d'enrichir le résultat avec des informations de prix.
+1. detect the cards present in the image;
+2. correct their perspective;
+3. identify each card among the set of known Pokémon TCG cards;
+4. track the cards between frames to avoid redoing the identification needlessly;
+5. display the name, the set, the number and the confidence level;
+6. eventually, allow the result to be enriched with price information.
 
-Exemple :
+Example:
 
 ```text
-📷 Flux caméra
+📷 Camera stream
       ↓
-Détection des cartes
+Card detection
       ↓
-Correction perspective
+Perspective correction
       ↓
-Extraction embedding
+Embedding extraction
       ↓
-Recherche vectorielle
+Vector search
       ↓
 Identification
       ↓
@@ -37,11 +37,11 @@ Identification
 
 ---
 
-## 2. Principe technique
+## 2. Technical principle
 
-Ne pas entraîner un classifieur avec ~20 000 classes.
+Do not train a classifier with ~20,000 classes.
 
-Le système doit utiliser une architecture **détection + recherche par similarité**.
+The system must use a **detection + similarity search** architecture.
 
 ### Pipeline
 
@@ -50,7 +50,7 @@ Camera
   │
   ▼
 Card Detector
-YOLO / modèle équivalent
+YOLO / equivalent model
   │
   ├── Card bounding box
   │
@@ -59,7 +59,7 @@ Perspective correction
   │
   ▼
 Image embedding model
-DINO / CLIP / modèle vision spécialisé
+DINO / CLIP / specialized vision model
   │
   ▼
 Vector similarity search
@@ -72,40 +72,40 @@ Card database
 Card ID + metadata
 ```
 
-### Pourquoi cette approche ?
+### Why this approach?
 
-Une nouvelle extension Pokémon ne doit idéalement pas nécessiter de réentraîner le modèle.
+Ideally, a new Pokémon set should not require retraining the model.
 
-Si une nouvelle carte est ajoutée :
+If a new card is added:
 
 ```text
-Nouvelle carte
+New card
     ↓
-Image officielle
+Official image
     ↓
 Embedding
     ↓
-Ajout dans la vector database
+Add to the vector database
 ```
 
-Le système peut alors reconnaître la nouvelle carte.
+The system can then recognize the new card.
 
 ---
 
 ## 3. Dataset
 
-Utiliser comme base un dataset contenant les images des cartes Pokémon TCG.
+Use as a base a dataset containing the images of the Pokémon TCG cards.
 
-Dataset identifié :
+Dataset identified:
 
 **Pokémon TCG – All Image Cards**
-- environ 20 000+ images ;
-- nombreuses extensions ;
-- images organisées par set.
+- about 20,000+ images;
+- many sets;
+- images organized by set.
 
-Compléter les images avec les données structurées du projet **Pokémon TCG API / Pokémon TCG Data**.
+Complete the images with the structured data of the **Pokémon TCG API / Pokémon TCG Data** project.
 
-Pour chaque carte, conserver au minimum :
+For each card, keep at minimum:
 
 ```json
 {
@@ -120,44 +120,44 @@ Pour chaque carte, conserver au minimum :
 }
 ```
 
-Le dataset doit être considéré comme une **base de référence**, pas comme un dataset d'entraînement final.
+The dataset must be considered a **reference base**, not a final training dataset.
 
 ---
 
-## 4. Données réalistes à générer
+## 4. Realistic data to generate
 
-Les scans officiels sont propres et parfaitement cadrés.
+The official scans are clean and perfectly framed.
 
-Pour fonctionner avec une caméra réelle, le système devra être robuste à :
+To work with a real camera, the system will have to be robust to:
 
-- rotation ;
-- perspective ;
-- changement d'échelle ;
-- éclairage différent ;
-- ombres ;
-- reflets ;
-- flou léger ;
-- cartes sous sleeve ;
-- cartes légèrement masquées ;
-- arrière-plans complexes ;
-- plusieurs cartes dans la même image ;
-- cartes partiellement hors champ.
+- rotation;
+- perspective;
+- scale change;
+- different lighting;
+- shadows;
+- glare;
+- slight blur;
+- cards in a sleeve;
+- slightly masked cards;
+- complex backgrounds;
+- several cards in the same image;
+- cards partially out of frame.
 
-Dans un premier temps, utiliser de la **data augmentation**.
+At first, use **data augmentation**.
 
-Plus tard, créer un dataset synthétique à partir des scans officiels.
+Later, create a synthetic dataset from the official scans.
 
 ---
 
-## 5. Détection
+## 5. Detection
 
-Commencer avec **YOLO**.
+Start with **YOLO**.
 
-Objectif du détecteur :
+Goal of the detector:
 
 ```text
 Input:
-  frame caméra
+  camera frame
 
 Output:
   [
@@ -171,34 +171,34 @@ Output:
   ]
 ```
 
-Le détecteur n'a pas besoin de savoir quelle carte est présente.
+The detector does not need to know which card is present.
 
-Il doit uniquement répondre :
+It must only answer:
 
-> "Il y a une carte Pokémon à cet endroit."
+> "There is a Pokémon card at this spot."
 
-### Première étape MVP
+### First MVP step
 
-Créer un petit dataset annoté de cartes dans différentes configurations et entraîner un modèle de détection.
+Create a small annotated dataset of cards in different configurations and train a detection model.
 
-Ne pas chercher immédiatement la perfection.
+Do not immediately aim for perfection.
 
-Objectif initial :
+Initial goal:
 
-- détecter 1 carte ;
-- puis plusieurs cartes ;
-- puis cartes partiellement masquées.
+- detect 1 card;
+- then several cards;
+- then partially masked cards.
 
 ---
 
-## 6. Correction de perspective
+## 6. Perspective correction
 
-Après détection, transformer le bounding box en image de carte normalisée.
+After detection, transform the bounding box into a normalized card image.
 
-Objectif :
+Goal:
 
 ```text
-Photo inclinée
+Tilted photo
       ↓
 ┌───────────╲
 │            ╲
@@ -215,20 +215,20 @@ Photo inclinée
 └─────────────┘
 ```
 
-À terme, utiliser une détection des **4 coins** de la carte et une homographie plutôt qu'un simple crop rectangulaire.
+Eventually, use detection of the card's **4 corners** and a homography rather than a simple rectangular crop.
 
 ---
 
 ## 7. Identification
 
-Tester plusieurs modèles d'embedding :
+Test several embedding models:
 
-- CLIP ;
-- DINOv2 / DINOv3 ;
-- modèle vision spécialisé ;
-- éventuellement un modèle entraîné spécifiquement sur les cartes Pokémon.
+- CLIP;
+- DINOv2 / DINOv3;
+- specialized vision model;
+- possibly a model trained specifically on Pokémon cards.
 
-Pour chaque image de référence :
+For each reference image:
 
 ```text
 card image
@@ -238,13 +238,13 @@ embedding
 vector
 ```
 
-Construire une base :
+Build a base:
 
 ```text
 card_id → embedding + metadata
 ```
 
-Lorsqu'une carte est détectée :
+When a card is detected:
 
 ```text
 camera image
@@ -256,7 +256,7 @@ nearest neighbors
 top 5 candidates
 ```
 
-Exemple :
+Example:
 
 ```text
 1. pikachu-base-58     0.982
@@ -266,25 +266,25 @@ Exemple :
 5. pikachu-promo-12    0.861
 ```
 
-Utiliser ensuite les métadonnées ou un second modèle pour départager les cartes visuellement proches.
+Then use the metadata or a second model to decide between visually close cards.
 
 ---
 
 ## 8. Vector database
 
-Pour le prototype local :
+For the local prototype:
 
-**FAISS** est suffisant.
+**FAISS** is enough.
 
-Plus tard :
+Later:
 
-- Qdrant ;
-- pgvector ;
-- autre vector database.
+- Qdrant;
+- pgvector;
+- another vector database.
 
-Avec ~20 000 cartes, la recherche est très légère.
+With ~20,000 cards, the search is very light.
 
-Il faut conserver :
+You need to keep:
 
 ```text
 embedding
@@ -298,11 +298,11 @@ image URL
 
 ---
 
-## 9. Tracking vidéo
+## 9. Video tracking
 
-Ne pas refaire l'identification complète à chaque frame.
+Do not redo the full identification on every frame.
 
-Pipeline :
+Pipeline:
 
 ```text
 Frame 1
@@ -313,34 +313,34 @@ Frame 2
   ↓
 Track existing cards
   ↓
-Pas de nouvelle identification si nécessaire
+No new identification if not needed
 
 Frame N
   ↓
-Nouvelle carte détectée
+New card detected
   ↓
 Identify
 ```
 
-Utiliser par exemple :
+Use for example:
 
-- ByteTrack ;
-- BoT-SORT ;
-- tracker intégré à YOLO.
+- ByteTrack;
+- BoT-SORT;
+- tracker built into YOLO.
 
-Cela permettra de conserver un FPS élevé.
+This will keep a high FPS.
 
 ---
 
-## 10. Interface MVP
+## 10. MVP interface
 
-Pour commencer, faire une application simple.
+To start, make a simple application.
 
-### Option recommandée
+### Recommended option
 
 **Python + OpenCV + FastAPI/Gradio/Streamlit**
 
-Interface :
+Interface:
 
 ```text
 ┌────────────────────────────────────────────┐
@@ -360,19 +360,19 @@ Interface :
 └────────────────────────────────────────────┘
 ```
 
-Chaque carte détectée doit afficher :
+Each detected card must display:
 
-- nom ;
-- set ;
-- numéro ;
-- confidence ;
-- éventuellement miniature.
+- name;
+- set;
+- number;
+- confidence;
+- possibly a thumbnail.
 
 ---
 
-## 11. Architecture du repository
+## 11. Repository architecture
 
-Proposition :
+Proposal:
 
 ```text
 pokemon-card-scanner/
@@ -427,37 +427,37 @@ pokemon-card-scanner/
 
 ### Phase 1 — Dataset
 
-- [ ] récupérer les images ;
-- [ ] récupérer les métadonnées ;
-- [ ] normaliser les IDs ;
-- [ ] supprimer les doublons ;
-- [ ] créer un dataset propre ;
-- [ ] générer quelques augmentations.
+- [ ] retrieve the images;
+- [ ] retrieve the metadata;
+- [ ] normalize the IDs;
+- [ ] remove the duplicates;
+- [ ] create a clean dataset;
+- [ ] generate a few augmentations.
 
-### Phase 2 — Identification offline
+### Phase 2 — Offline identification
 
-Avant la caméra, faire fonctionner :
+Before the camera, get this working:
 
 ```text
-image carte → embedding → nearest neighbor → carte
+card image → embedding → nearest neighbor → card
 ```
 
-Mesurer :
+Measure:
 
-- Top-1 accuracy ;
-- Top-5 accuracy ;
-- confusion entre cartes similaires ;
-- temps d'inférence.
+- Top-1 accuracy;
+- Top-5 accuracy;
+- confusion between similar cards;
+- inference time.
 
-### Phase 3 — Détection
+### Phase 3 — Detection
 
-- [ ] annoter des images multi-cartes ;
-- [ ] entraîner YOLO ;
-- [ ] détecter une carte ;
-- [ ] détecter plusieurs cartes ;
-- [ ] tester différents angles.
+- [ ] annotate multi-card images;
+- [ ] train YOLO;
+- [ ] detect one card;
+- [ ] detect several cards;
+- [ ] test different angles.
 
-### Phase 4 — Pipeline caméra
+### Phase 4 — Camera pipeline
 
 ```text
 Camera
@@ -468,26 +468,26 @@ Camera
  → Result
 ```
 
-Objectif initial : fonctionnement quasi temps réel sur RTX 3080.
+Initial goal: near-real-time operation on an RTX 3080.
 
 ### Phase 5 — Tracking
 
-- [ ] intégrer ByteTrack/BoT-SORT ;
-- [ ] éviter les recalculs ;
-- [ ] stabiliser les résultats ;
-- [ ] gérer apparition/disparition des cartes.
+- [ ] integrate ByteTrack/BoT-SORT;
+- [ ] avoid recomputations;
+- [ ] stabilize the results;
+- [ ] handle appearance/disappearance of cards.
 
 ### Phase 6 — UX
 
-- [ ] interface web ;
-- [ ] overlays ;
-- [ ] historique des cartes détectées ;
-- [ ] scan automatique ;
-- [ ] export CSV/JSON.
+- [ ] web interface;
+- [ ] overlays;
+- [ ] history of detected cards;
+- [ ] automatic scan;
+- [ ] CSV/JSON export.
 
-### Phase 7 — Prix
+### Phase 7 — Prices
 
-Ajouter une source de prix et afficher :
+Add a price source and display:
 
 ```text
 Pikachu
@@ -500,41 +500,41 @@ Near Mint
 
 ---
 
-## 13. Contraintes importantes
+## 13. Important constraints
 
-### Ne pas commencer par tout construire
+### Do not start by building everything
 
-Le premier objectif doit être extrêmement simple :
+The first goal must be extremely simple:
 
 ```text
-UNE IMAGE
+ONE IMAGE
    ↓
-UNE CARTE
+ONE CARD
    ↓
-IDENTIFICATION CORRECTE
+CORRECT IDENTIFICATION
 ```
 
-Ensuite seulement :
+Only then:
 
 ```text
-UNE IMAGE
+ONE IMAGE
    ↓
-PLUSIEURS CARTES
+SEVERAL CARDS
 ```
 
-Puis :
+Then:
 
 ```text
-FLUX VIDÉO
+VIDEO STREAM
    ↓
-PLUSIEURS CARTES
+SEVERAL CARDS
    ↓
 TRACKING
 ```
 
-### Ne pas entraîner un modèle avec 20 000 classes
+### Do not train a model with 20,000 classes
 
-Privilégier :
+Favour:
 
 ```text
 Detector
@@ -544,13 +544,13 @@ Embedding model
 Vector search
 ```
 
-Cette architecture sera beaucoup plus flexible pour les nouvelles extensions.
+This architecture will be much more flexible for new sets.
 
 ---
 
-## 14. Objectif final
+## 14. Final goal
 
-Le produit final doit permettre de prendre un téléphone, une webcam ou un flux vidéo et de faire :
+The final product must allow you to take a phone, a webcam or a video stream and do:
 
 ```text
                  📱 CAMERA
@@ -586,23 +586,23 @@ Le produit final doit permettre de prendre un téléphone, une webcam ou un flux
           └────────────────────┘
 ```
 
-À terme, le scanner pourrait devenir un outil de **scan automatique de collection**, capable d'identifier les cartes, constituer une collection et récupérer leur valeur.
+Eventually, the scanner could become an **automatic collection scan** tool, able to identify the cards, build a collection and retrieve their value.
 
 ---
 
-## 15. Première tâche pour Claude Code
+## 15. First task for Claude Code
 
-Commencer par demander à Claude Code de :
+Start by asking Claude Code to:
 
-1. créer le repository selon l'architecture ci-dessus ;
-2. mettre en place Python + PyTorch ;
-3. créer un script de téléchargement/import du dataset ;
-4. normaliser les métadonnées ;
-5. créer un premier script `build_embeddings.py` ;
-6. utiliser un modèle d'embedding vision pré-entraîné ;
-7. construire un index FAISS ;
-8. créer `identify_card.py` qui prend une image en entrée et retourne les 5 cartes les plus proches ;
-9. créer quelques tests ;
-10. mesurer la précision et le temps d'inférence avant de commencer la partie caméra.
+1. create the repository following the architecture above;
+2. set up Python + PyTorch;
+3. create a dataset download/import script;
+4. normalize the metadata;
+5. create a first `build_embeddings.py` script;
+6. use a pre-trained vision embedding model;
+7. build a FAISS index;
+8. create `identify_card.py` that takes an image as input and returns the 5 closest cards;
+9. create a few tests;
+10. measure the accuracy and inference time before starting the camera part.
 
-**Important : ne pas implémenter la caméra avant d'avoir obtenu une identification fiable sur des images individuelles.**
+**Important: do not implement the camera before obtaining reliable identification on individual images.**
